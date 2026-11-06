@@ -43,8 +43,14 @@ maximum cut weight up to floating-point rounding.
 Run all commands from the repository root. Download outside the repository;
 redistribution terms have not been verified and the data is not included.
 
+Set `ANNEALER_WORK_DIR` to an absolute directory of your choice before running
+these commands. It defaults to `TMPDIR` when set, otherwise `/tmp`. Run the
+following blocks in the same shell.
+
 ```sh
-curl --fail --location https://web.stanford.edu/~yyye/yyye/Gset/G1 -o /tmp/annealer-G1
+export ANNEALER_WORK_DIR="${ANNEALER_WORK_DIR:-${TMPDIR:-/tmp}}"
+mkdir -p "${ANNEALER_WORK_DIR}"
+curl --fail --location https://web.stanford.edu/~yyye/yyye/Gset/G1 -o "${ANNEALER_WORK_DIR}/annealer-G1"
 ```
 
 The parser expects whitespace-separated `vertices edges`, followed by exactly
@@ -72,7 +78,7 @@ optimization without fast-math.
 
 ```sh
 ./build/gset_g1_example --help
-./build/gset_g1_example /tmp/annealer-G1 --seed 0 --trials 10 --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
+./build/gset_g1_example "${ANNEALER_WORK_DIR}/annealer-G1" --seed 0 --trials 10 --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
 ```
 
 Syntax: `gset_g1_example FILE [OPTION VALUE ...]`.
@@ -165,14 +171,14 @@ disjoint interval totals/call counts, and the residual described in the
 [solver API](../solver.md#instrumented-prepared-solves).
 
 ```sh
-cmake -S . -B /tmp/annealer-build -DCMAKE_BUILD_TYPE=Release \
+cmake -S . -B "${ANNEALER_WORK_DIR}/annealer-build" -DCMAKE_BUILD_TYPE=Release \
   -DANNEALER_BUILD_BENCHMARKS=ON \
   -DCMAKE_CXX_FLAGS='-Wall -Wextra -Wpedantic -Wconversion'
-cmake --build /tmp/annealer-build --parallel 2
-ctest --test-dir /tmp/annealer-build --output-on-failure
-/tmp/annealer-build/gset_g1_example G1 --trials 1 --levels 200 --sweeps 100 \
+cmake --build "${ANNEALER_WORK_DIR}/annealer-build" --parallel 2
+ctest --test-dir "${ANNEALER_WORK_DIR}/annealer-build" --output-on-failure
+"${ANNEALER_WORK_DIR}/annealer-build/gset_g1_example" "${ANNEALER_WORK_DIR}/annealer-G1" --trials 1 --levels 200 --sweeps 100 \
   --target-cut 11624 --profile --trace-csv docs/measurements/g1-profile.csv
-/tmp/annealer-build/gset_benchmark G1 --levels 50,100,200 --budget 240 \
+"${ANNEALER_WORK_DIR}/annealer-build/gset_benchmark" "${ANNEALER_WORK_DIR}/annealer-G1" --levels 50,100,200 --budget 240 \
   --target-cut 11624 --csv docs/measurements/g1-budget.csv
 ```
 

@@ -52,15 +52,21 @@ Compressed input must be decompressed first. No third-party parser is used.
 
 Create a small instance locally:
 
+Set `ANNEALER_WORK_DIR` to an absolute directory of your choice before running
+these commands. It defaults to `TMPDIR` when set, otherwise `/tmp`. Run the
+following blocks in the same shell.
+
 ```sh
-cat > /tmp/small.wcnf <<'WCNF'
+export ANNEALER_WORK_DIR="${ANNEALER_WORK_DIR:-${TMPDIR:-/tmp}}"
+mkdir -p "${ANNEALER_WORK_DIR}"
+cat > "${ANNEALER_WORK_DIR}/small.wcnf" <<'WCNF'
 p wcnf 5 4 100
 100 1 -2 3 0
 3 -1 2 -3 4 -5 0
 7 1 0
 2 -1 0
 WCNF
-./build/maxsat_example /tmp/small.wcnf --seed 42 --trials 10 \
+./build/maxsat_example "${ANNEALER_WORK_DIR}/small.wcnf" --seed 42 --trials 10 \
   --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
 ctest --test-dir build --output-on-failure -R maxsat
 ```

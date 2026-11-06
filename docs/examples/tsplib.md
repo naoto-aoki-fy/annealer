@@ -46,15 +46,21 @@ subset covers eil51 and berlin52; it is not a general TSPLIB parser.
 The [official TSPLIB95 site](https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/)
 links compressed instance files. Download and decompress the targets locally:
 
+Set `ANNEALER_WORK_DIR` to an absolute directory of your choice before running
+these commands. It defaults to `TMPDIR` when set, otherwise `/tmp`. Run the
+following blocks in the same shell.
+
 ```sh
-curl -fL https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/eil51.tsp.gz -o /tmp/eil51.tsp.gz
-curl -fL https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/berlin52.tsp.gz -o /tmp/berlin52.tsp.gz
-gzip -dk /tmp/eil51.tsp.gz /tmp/berlin52.tsp.gz
+export ANNEALER_WORK_DIR="${ANNEALER_WORK_DIR:-${TMPDIR:-/tmp}}"
+mkdir -p "${ANNEALER_WORK_DIR}"
+curl -fL https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/eil51.tsp.gz -o "${ANNEALER_WORK_DIR}/eil51.tsp.gz"
+curl -fL https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/berlin52.tsp.gz -o "${ANNEALER_WORK_DIR}/berlin52.tsp.gz"
+gzip -dk "${ANNEALER_WORK_DIR}/eil51.tsp.gz" "${ANNEALER_WORK_DIR}/berlin52.tsp.gz"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel 1
-./build/tsplib_example /tmp/eil51.tsp --reference-cost 426 --seed 42 --trials 10 \
+./build/tsplib_example "${ANNEALER_WORK_DIR}/eil51.tsp" --reference-cost 426 --seed 42 --trials 10 \
   --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
-./build/tsplib_example /tmp/berlin52.tsp --reference-cost 7542 --seed 42 --trials 10 \
+./build/tsplib_example "${ANNEALER_WORK_DIR}/berlin52.tsp" --reference-cost 7542 --seed 42 --trials 10 \
   --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
 ctest --test-dir build --output-on-failure -R tsplib
 ```

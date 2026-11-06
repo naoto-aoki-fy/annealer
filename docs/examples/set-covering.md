@@ -46,11 +46,17 @@ locally. It has 200 rows and 1,000 columns. Benchmark data is not bundled and is
 not downloaded by the build or tests; consult the provider about redistribution
 before sharing data copies.
 
+Set `ANNEALER_WORK_DIR` to an absolute directory of your choice before running
+these commands. It defaults to `TMPDIR` when set, otherwise `/tmp`. Run the
+following blocks in the same shell.
+
 ```sh
-curl -fL https://people.brunel.ac.uk/~mastjjb/jeb/orlib/files/scp41.txt -o /tmp/scp41.txt
+export ANNEALER_WORK_DIR="${ANNEALER_WORK_DIR:-${TMPDIR:-/tmp}}"
+mkdir -p "${ANNEALER_WORK_DIR}"
+curl -fL https://people.brunel.ac.uk/~mastjjb/jeb/orlib/files/scp41.txt -o "${ANNEALER_WORK_DIR}/scp41.txt"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel 1
-./build/set_covering_example /tmp/scp41.txt --seed 42 --trials 10 \
+./build/set_covering_example "${ANNEALER_WORK_DIR}/scp41.txt" --seed 42 --trials 10 \
   --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
 ctest --test-dir build --output-on-failure -R set_covering
 ```

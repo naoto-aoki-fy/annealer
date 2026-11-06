@@ -77,9 +77,15 @@ O(K). Both validate the instance structure and duration horizon first.
 Fisher–Thompson `ft06` (6 jobs, 6 machines, 36 operations) and Lawrence `la01`
 (10 jobs, 5 machines, 50 operations). Download standard instances locally:
 
+Set `ANNEALER_WORK_DIR` to an absolute directory of your choice before running
+these commands. It defaults to `TMPDIR` when set, otherwise `/tmp`. Run the
+following blocks in the same shell.
+
 ```sh
-curl -fL https://raw.githubusercontent.com/ScheduleOpt/benchmarks/main/jobshop/instances/text/FisherThompson1963/ft06.txt -o /tmp/ft06.txt
-curl -fL https://raw.githubusercontent.com/ScheduleOpt/benchmarks/main/jobshop/instances/text/Lawrence1984/la01.txt -o /tmp/la01.txt
+export ANNEALER_WORK_DIR="${ANNEALER_WORK_DIR:-${TMPDIR:-/tmp}}"
+mkdir -p "${ANNEALER_WORK_DIR}"
+curl -fL https://raw.githubusercontent.com/ScheduleOpt/benchmarks/main/jobshop/instances/text/FisherThompson1963/ft06.txt -o "${ANNEALER_WORK_DIR}/ft06.txt"
+curl -fL https://raw.githubusercontent.com/ScheduleOpt/benchmarks/main/jobshop/instances/text/Lawrence1984/la01.txt -o "${ANNEALER_WORK_DIR}/la01.txt"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel 1
 ctest --test-dir build --output-on-failure -R jsplib_jobshop
@@ -94,9 +100,16 @@ The helper is header-only C++20 and depends only on the standard library:
 
 ```cpp
 #include "examples/jsplib_jobshop.hpp"
+#include <cstdlib>
 #include <fstream>
+#include <stdexcept>
+#include <string>
 
-std::ifstream input("/tmp/ft06.txt");
+const char* work_dir = std::getenv("ANNEALER_WORK_DIR");
+if (work_dir == nullptr || *work_dir == '\0') {
+    throw std::runtime_error("Set ANNEALER_WORK_DIR before running this example");
+}
+std::ifstream input(std::string(work_dir) + "/ft06.txt");
 const auto instance = jobshop::read(input);
 const auto starts = jobshop::serial_schedule(instance);
 const auto result = jobshop::evaluate(instance, starts);
@@ -160,9 +173,9 @@ with a specialized scheduling solver.
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel 1
-./build/jsplib_jobshop_example /tmp/ft06.txt --seed 42 --trials 1 \
+./build/jsplib_jobshop_example "${ANNEALER_WORK_DIR}/ft06.txt" --seed 42 --trials 1 \
   --initial-temperature 30 --final-temperature 0.05 --levels 2 --sweeps 1
-./build/jsplib_jobshop_example /tmp/la01.txt --memory-mib 2048 --seed 42 --trials 1 \
+./build/jsplib_jobshop_example "${ANNEALER_WORK_DIR}/la01.txt" --memory-mib 2048 --seed 42 --trials 1 \
   --initial-temperature 30 --final-temperature 0.05 --levels 2 --sweeps 1
 ctest --test-dir build --output-on-failure -R 'jobshop'
 ```

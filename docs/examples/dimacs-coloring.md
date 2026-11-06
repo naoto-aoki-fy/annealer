@@ -32,21 +32,27 @@ rejects the binary length record. Use the original `bin2asc` translator from
 The pinned source includes the binary format specification and translator.
 The following procedure was executed successfully on Linux with GCC 11.5:
 
+Set `ANNEALER_WORK_DIR` to an absolute directory of your choice before running
+these commands. It defaults to `TMPDIR` when set, otherwise `/tmp`. Run the
+following blocks in the same shell.
+
 ```sh
-git clone https://github.com/BartMassey/instances /tmp/annealer-dimacs-instances
-git -C /tmp/annealer-dimacs-instances checkout --detach 83b4e11b5d83bcf44feb628d1e4f7a994de0a0cf
-cc -std=gnu89 /tmp/annealer-dimacs-instances/binformat/bin2asc.c \
-  -o /tmp/annealer-dimacs-instances/binformat/bin2asc
+export ANNEALER_WORK_DIR="${ANNEALER_WORK_DIR:-${TMPDIR:-/tmp}}"
+mkdir -p "${ANNEALER_WORK_DIR}"
+git clone https://github.com/BartMassey/instances "${ANNEALER_WORK_DIR}/annealer-dimacs-instances"
+git -C "${ANNEALER_WORK_DIR}/annealer-dimacs-instances" checkout --detach 83b4e11b5d83bcf44feb628d1e4f7a994de0a0cf
+cc -std=gnu89 "${ANNEALER_WORK_DIR}/annealer-dimacs-instances/binformat/bin2asc.c" \
+  -o "${ANNEALER_WORK_DIR}/annealer-dimacs-instances/binformat/bin2asc"
 curl --fail --location \
   https://archive.dimacs.rutgers.edu/pub/challenge/graph/benchmarks/color/DSJC125.1.col.b \
-  -o /tmp/DSJC125.1.col.b
-/tmp/annealer-dimacs-instances/binformat/bin2asc \
-  /tmp/DSJC125.1.col.b /tmp/DSJC125.1.col
-sha256sum /tmp/DSJC125.1.col.b /tmp/DSJC125.1.col
+  -o "${ANNEALER_WORK_DIR}/DSJC125.1.col.b"
+"${ANNEALER_WORK_DIR}/annealer-dimacs-instances/binformat/bin2asc" \
+  "${ANNEALER_WORK_DIR}/DSJC125.1.col.b" "${ANNEALER_WORK_DIR}/DSJC125.1.col"
+sha256sum "${ANNEALER_WORK_DIR}/DSJC125.1.col.b" "${ANNEALER_WORK_DIR}/DSJC125.1.col"
 # Correct the archive preamble's doubled edge count for a simple graph.
-sed 's/^p edge 125 1472$/p edge 125 736/' /tmp/DSJC125.1.col \
-  > /tmp/DSJC125.1-simple.col
-sha256sum /tmp/DSJC125.1-simple.col
+sed 's/^p edge 125 1472$/p edge 125 736/' "${ANNEALER_WORK_DIR}/DSJC125.1.col" \
+  > "${ANNEALER_WORK_DIR}/DSJC125.1-simple.col"
+sha256sum "${ANNEALER_WORK_DIR}/DSJC125.1-simple.col"
 ```
 
 Expected SHA-256 values, binary then converted text:
@@ -76,13 +82,13 @@ the hashes. Benchmark data is not redistributed here.
 From the repository root, with CMake 3.20+, C++20 and a C compiler:
 
 ```sh
-cmake -S . -B /tmp/annealer-coloring-build -DCMAKE_BUILD_TYPE=Release \
+cmake -S . -B "${ANNEALER_WORK_DIR}/annealer-coloring-build" -DCMAKE_BUILD_TYPE=Release \
   -DANNEALER_BUILD_BENCHMARKS=ON \
   -DCMAKE_CXX_FLAGS='-Wall -Wextra -Wpedantic -Wconversion'
-cmake --build /tmp/annealer-coloring-build --parallel 2
-ctest --test-dir /tmp/annealer-coloring-build --output-on-failure
-/tmp/annealer-coloring-build/dimacs_coloring_example --help
-/tmp/annealer-coloring-build/dimacs_coloring_example /tmp/DSJC125.1-simple.col \
+cmake --build "${ANNEALER_WORK_DIR}/annealer-coloring-build" --parallel 2
+ctest --test-dir "${ANNEALER_WORK_DIR}/annealer-coloring-build" --output-on-failure
+"${ANNEALER_WORK_DIR}/annealer-coloring-build/dimacs_coloring_example" --help
+"${ANNEALER_WORK_DIR}/annealer-coloring-build/dimacs_coloring_example" "${ANNEALER_WORK_DIR}/DSJC125.1-simple.col" \
   --colors 5 --seed 0 --trials 10 --initial-temperature 30 \
   --final-temperature 0.05 --levels 200 --sweeps 100
 ```
