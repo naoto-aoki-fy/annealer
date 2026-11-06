@@ -26,3 +26,4 @@ The example evaluates an assignment (`Energy: -18.5`) and runs the solver. Link 
 - [G-set G1 Max-Cut tutorial and benchmark](docs/examples/gset-g1.md)
 - [DIMACS graph coloring tutorial and DSJC125.1 benchmark](docs/examples/dimacs-coloring.md)
 - [Weighted partial MaxSAT WCNF example and benchmarks](docs/examples/maxsat.md)
+- [OR-Library set covering scp41 benchmark](docs/examples/set-covering.md)
