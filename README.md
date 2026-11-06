@@ -24,3 +24,4 @@ The example evaluates an assignment (`Energy: -18.5`) and runs the solver. Link 
 - [Solver configuration, schedule, and results](docs/solver.md)
 - [Native compilation, runtime preparation, and incremental updates](docs/preparation.md)
 - [G-set G1 Max-Cut tutorial and benchmark](docs/examples/gset-g1.md)
+- [DIMACS graph coloring tutorial and DSJC125.1 benchmark](docs/examples/dimacs-coloring.md)
