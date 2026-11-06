@@ -75,3 +75,74 @@ invalid communicators, mismatched collective calls, exceptions before entry,
 nonterminating callbacks, and MPI failures are outside this exception policy;
 there is no fault-tolerant MPI recovery. The caller owns communicator lifetime
 and MPI thread-level compliance.
+
+## Temperature replica exchange
+
+Include `<annealer/replica_exchange.hpp>` and link `annealer::mpi`:
+
+```cpp
+annealer::ReplicaExchangeConfig config;
+config.temperatures = annealer::geometric_ladder(0.1, 30.0, communicator_size);
+config.solver.seed = 42;
+config.total_sweeps = 1000;
+config.exchange_interval = 10;
+config.exchange_seed = 900;
+const auto result = annealer::solve_replica_exchange(comm, prepared, config);
+```
+
+The Model and PreparedModel overloads use the same MPI ownership, equivalent-model
+requirements, and collective exception policy as multi-start. Each rank keeps
+one fixed temperature; the explicit ladder must have exactly communicator size
+entries in nondecreasing order, all positive and finite. Equal temperatures are
+allowed. `geometric_ladder(cold, hot, count)` includes both endpoints for two or
+more replicas; one replica uses `cold`. A zero count is invalid.
+
+All configuration fields must agree across ranks. `solver.seed + rank` seeds the
+local chain, with checked overflow. The optional initial assignment and proposal
+mode are inherited from `solver`. The solver schedule fields are checked for
+consistency but replaced by the constant rank temperature and `total_sweeps`.
+`exchange_interval` must be positive, even when exchanges are disabled. Total
+sweeps may be zero: initialization and global best selection still happen, with
+no moves or exchanges. A single rank performs constant-temperature local work
+and has no exchange partner. `exchanges = false` produces the same local result
+as serial solving for one temperature level with `total_sweeps` sweeps, rank seed,
+and the same initialization/proposal settings.
+
+After each interval, including a final partial interval, round zero pairs
+(0,1), (2,3), ...; round one pairs (1,2), (3,4), ...; these patterns alternate.
+Unpaired ranks still join error agreement collectives. Current energies are fully
+evaluated before communication. For a pair i,j, acceptance is
+`min(1, exp((1/T_i - 1/T_j) * (E_i - E_j)))`. The lower rank makes exactly one
+decision and sends it to its partner. It draws a uniform from the top 53 bits of
+a separate `mt19937_64(exchange_seed + rank)` stream, once per owned pair attempt.
+Local proposal RNGs are never used for exchanges. Seed overflow is rejected.
+Equal temperatures or energies accept; zero uniform accepts. Other decisions
+compare logarithms, using scaled differences to avoid overflow for extreme finite
+temperatures and energies. `replica_exchange_accept` exposes this numerical test;
+invalid inputs throw `invalid_argument`.
+
+Communication uses matched `MPI_Sendrecv` calls for energies, decisions, and
+accepted `MPI_INT64_T` assignment payloads. No C++ model or cache objects are
+transmitted. Received assignments rebuild the local caches through the internal
+execution interface. Temperatures, RNG streams, move counters, rebase cadence,
+and historical bests stay on their ranks. This temperature exchange is distinct
+from `solver.swap_proposals`, which swaps two values within a local assignment.
+The two features can be used together.
+
+`ReplicaExchangeResult.local` is the rank's complete `SolverResult`.
+`best_assignment`, `best_energy`, and `best_rank` describe the best historical
+state observed anywhere, available and energy-verified everywhere. Equal energies
+choose the lowest rank; a rank retains its first strict best. Imported states
+participate in this best tracking. `exchange_attempts` and `exchange_accepts` are
+global counts of pairs, each counted once. `local_exchange_attempts` and
+`local_exchange_accepts` count participation on this rank, so their communicator
+sums are twice the global counts. All exchange counts are separate from local
+Metropolis move counts; global exchange counter overflow is a collective error.
+
+All members must call the same API in the same order. Use a communicator dedicated
+to this operation, without concurrent traffic using its internal tags 0, 1, or 2.
+Preparation, initialization, local updates, decision-making, assignment installation,
+and final verification have collective error boundaries before peers proceed to
+communication. There is no partial result or process-failure recovery. This first
+implementation has one replica per rank, a fixed ladder, and blocking exchanges;
+it does not adapt temperatures or move replicas between rank temperatures.
