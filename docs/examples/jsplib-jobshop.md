@@ -87,7 +87,7 @@ mkdir -p "${ANNEALER_WORK_DIR}"
 curl -fL https://raw.githubusercontent.com/ScheduleOpt/benchmarks/main/jobshop/instances/text/FisherThompson1963/ft06.txt -o "${ANNEALER_WORK_DIR}/ft06.txt"
 curl -fL https://raw.githubusercontent.com/ScheduleOpt/benchmarks/main/jobshop/instances/text/Lawrence1984/la01.txt -o "${ANNEALER_WORK_DIR}/la01.txt"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ctest --test-dir build --output-on-failure -R jsplib_jobshop
 ```
 
@@ -172,7 +172,7 @@ with a specialized scheduling solver.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ./build/jsplib_jobshop_example "${ANNEALER_WORK_DIR}/ft06.txt" --seed 42 --trials 1 \
   --initial-temperature 30 --final-temperature 0.05 --levels 2 --sweeps 1
 ./build/jsplib_jobshop_example "${ANNEALER_WORK_DIR}/la01.txt" --memory-mib 2048 --seed 42 --trials 1 \

@@ -46,7 +46,7 @@ No real instance is bundled or required by CTest.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ./build/qaplib_example /path/to/nug12.dat --reference-cost 578 --seed 42 --trials 10 \
   --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
 ./build/qaplib_example /path/to/nug20.dat --reference-cost 2570 --seed 42 --trials 10 \

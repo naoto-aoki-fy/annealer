@@ -21,7 +21,7 @@ Use a Release build. Optional supported link-time optimization:
 
 ```sh
 cmake -S . -B build-ipo -DCMAKE_BUILD_TYPE=Release -DANNEALER_ENABLE_IPO=ON
-cmake --build build-ipo --parallel 1
+cmake --build build-ipo --parallel "$(nproc)"
 ctest --test-dir build-ipo --output-on-failure --parallel 1
 ```
 

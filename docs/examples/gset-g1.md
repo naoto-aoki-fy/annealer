@@ -66,7 +66,7 @@ Requires CMake 3.20+, C++20, and a C compiler for the existing examples.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ctest --test-dir build --output-on-failure --parallel 1
 ctest --test-dir build -R '^gset_tests$' --output-on-failure
 ```
@@ -198,7 +198,7 @@ disjoint interval totals/call counts, and the residual described in the
 cmake -S . -B "${ANNEALER_WORK_DIR}/annealer-build" -DCMAKE_BUILD_TYPE=Release \
   -DANNEALER_BUILD_BENCHMARKS=ON \
   -DCMAKE_CXX_FLAGS='-Wall -Wextra -Wpedantic -Wconversion'
-cmake --build "${ANNEALER_WORK_DIR}/annealer-build" --parallel 2
+cmake --build "${ANNEALER_WORK_DIR}/annealer-build" --parallel "$(nproc)"
 ctest --test-dir "${ANNEALER_WORK_DIR}/annealer-build" --output-on-failure
 "${ANNEALER_WORK_DIR}/annealer-build/gset_g1_example" "${ANNEALER_WORK_DIR}/annealer-G1" --trials 1 --levels 200 --sweeps 100 \
   --target-cut 11624 --profile --trace-csv docs/measurements/g1-profile.csv

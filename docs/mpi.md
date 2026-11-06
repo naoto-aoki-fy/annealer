@@ -11,13 +11,13 @@ MPI-enabled builds) an MPI implementation providing C++ discovery and `mpiexec`:
 ```sh
 # Serial build: no MPI installation required.
 cmake -S . -B build-serial -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DANNEALER_ENABLE_MPI=OFF
-cmake --build build-serial --parallel 2
+cmake --build build-serial --parallel "$(nproc)"
 ctest --test-dir build-serial --output-on-failure
 ./build-serial/multivalued_example
 
 # MPI build: includes the serial targets and the self-contained MPI example.
 cmake -S . -B build-mpi -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DANNEALER_ENABLE_MPI=ON
-cmake --build build-mpi --parallel 2
+cmake --build build-mpi --parallel "$(nproc)"
 mpiexec -n 1 ./build-mpi/mpi_example
 mpiexec -n 3 ./build-mpi/mpi_example
 ctest --test-dir build-mpi --output-on-failure

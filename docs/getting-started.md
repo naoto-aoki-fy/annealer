@@ -5,7 +5,7 @@ example. The default serial build has no third-party runtime dependencies.
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DANNEALER_ENABLE_MPI=OFF
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ctest --test-dir build --output-on-failure --parallel 1
 ./build/minimal_example
 ./build/binary_hubo_example
@@ -100,7 +100,7 @@ For an MPI build (requires an MPI installation):
 
 ```sh
 cmake -S . -B build-mpi -DCMAKE_BUILD_TYPE=Release -DANNEALER_ENABLE_MPI=ON
-cmake --build build-mpi --parallel 2
+cmake --build build-mpi --parallel "$(nproc)"
 ctest --test-dir build-mpi --output-on-failure
 ```
 

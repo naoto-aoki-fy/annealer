@@ -85,7 +85,7 @@ From the repository root, with CMake 3.20+, C++20 and a C compiler:
 cmake -S . -B "${ANNEALER_WORK_DIR}/annealer-coloring-build" -DCMAKE_BUILD_TYPE=Release \
   -DANNEALER_BUILD_BENCHMARKS=ON \
   -DCMAKE_CXX_FLAGS='-Wall -Wextra -Wpedantic -Wconversion'
-cmake --build "${ANNEALER_WORK_DIR}/annealer-coloring-build" --parallel 2
+cmake --build "${ANNEALER_WORK_DIR}/annealer-coloring-build" --parallel "$(nproc)"
 ctest --test-dir "${ANNEALER_WORK_DIR}/annealer-coloring-build" --output-on-failure
 "${ANNEALER_WORK_DIR}/annealer-coloring-build/dimacs_coloring_example" --help
 "${ANNEALER_WORK_DIR}/annealer-coloring-build/dimacs_coloring_example" "${ANNEALER_WORK_DIR}/DSJC125.1-simple.col" \

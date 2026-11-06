@@ -6,7 +6,7 @@
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DANNEALER_BUILD_BENCHMARKS=ON \
     -DCMAKE_CXX_FLAGS='-Wall -Wextra -Wpedantic -Werror' \
     -DCMAKE_C_FLAGS='-Wall -Wextra -Wpedantic -Werror'
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ctest --test-dir build --output-on-failure --parallel 1
 ./build/serial_benchmark
 ```

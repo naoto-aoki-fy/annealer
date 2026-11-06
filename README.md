@@ -12,7 +12,7 @@ example. No third-party libraries are required for the default serial build. Opt
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DANNEALER_ENABLE_MPI=OFF
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ctest --test-dir build --output-on-failure --parallel 1
 ./build/multivalued_example
 ```

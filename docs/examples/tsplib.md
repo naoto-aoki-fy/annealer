@@ -57,7 +57,7 @@ curl -fL https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/eil51.tsp.gz
 curl -fL https://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp/berlin52.tsp.gz -o "${ANNEALER_WORK_DIR}/berlin52.tsp.gz"
 gzip -dk "${ANNEALER_WORK_DIR}/eil51.tsp.gz" "${ANNEALER_WORK_DIR}/berlin52.tsp.gz"
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel 1
+cmake --build build --parallel "$(nproc)"
 ./build/tsplib_example "${ANNEALER_WORK_DIR}/eil51.tsp" --reference-cost 426 --seed 42 --trials 10 \
   --initial-temperature 30 --final-temperature 0.05 --levels 200 --sweeps 100
 ./build/tsplib_example "${ANNEALER_WORK_DIR}/berlin52.tsp" --reference-cost 7542 --seed 42 --trials 10 \
