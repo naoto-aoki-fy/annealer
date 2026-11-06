@@ -28,3 +28,4 @@ The example evaluates an assignment (`Energy: -18.5`) and runs the solver. Link 
 - [Weighted partial MaxSAT WCNF example and benchmarks](docs/examples/maxsat.md)
 - [OR-Library set covering scp41 benchmark](docs/examples/set-covering.md)
 - [QAPLIB nug12 and nug20 benchmark](docs/examples/qaplib.md)
+- [TSPLIB95 eil51 and berlin52 benchmark](docs/examples/tsplib.md)

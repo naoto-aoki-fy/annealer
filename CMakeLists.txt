@@ -20,7 +20,7 @@ add_executable(multivalued_example
     examples/main.cpp examples/user_model.cpp examples/c_factors.c)
 target_link_libraries(multivalued_example PRIVATE annealer::annealer)
 set_target_properties(multivalued_example PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
-foreach(demo binary_hubo nonlinear minimal gset_g1 dimacs_coloring maxsat set_covering qaplib)
+foreach(demo binary_hubo nonlinear minimal gset_g1 dimacs_coloring maxsat set_covering qaplib tsplib)
     add_executable(${demo}_example examples/${demo}.cpp)
     target_link_libraries(${demo}_example PRIVATE annealer::annealer)
 endforeach()
@@ -40,6 +40,13 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(tsplib_tests tests/tsplib_tests.cpp)
+    target_link_libraries(tsplib_tests PRIVATE annealer::annealer)
+    add_test(NAME tsplib_tests COMMAND tsplib_tests)
+    add_test(NAME tsplib_cli_tests COMMAND ${CMAKE_COMMAND}
+        "-DEXAMPLE=$<TARGET_FILE:tsplib_example>"
+        "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/tsplib_cli_tests.cmake")
     add_executable(qaplib_tests tests/qaplib_tests.cpp)
     target_link_libraries(qaplib_tests PRIVATE annealer::annealer)
     add_test(NAME qaplib_tests COMMAND qaplib_tests)
