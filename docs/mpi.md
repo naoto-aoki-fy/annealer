@@ -1,13 +1,45 @@
-# MPI multi-start solver
+# MPI multi-start and replica exchange
 
 MPI support is optional and disabled by default. Serial headers and the
 `annealer::annealer` target do not depend on MPI.
 
+## Build, run, and test
+
+From the repository root, with CMake 3.20+, C/C++20 compilers, and (for
+MPI-enabled builds) an MPI implementation providing C++ discovery and `mpiexec`:
+
 ```sh
-cmake -S . -B build-mpi -DANNEALER_ENABLE_MPI=ON
+# Serial build: no MPI installation required.
+cmake -S . -B build-serial -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DANNEALER_ENABLE_MPI=OFF
+cmake --build build-serial --parallel 2
+ctest --test-dir build-serial --output-on-failure
+./build-serial/multivalued_example
+
+# MPI build: includes the serial targets and the self-contained MPI example.
+cmake -S . -B build-mpi -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DANNEALER_ENABLE_MPI=ON
 cmake --build build-mpi --parallel 2
-ctest --test-dir build-mpi -R mpi_tests --output-on-failure
+mpiexec -n 1 ./build-mpi/mpi_example
+mpiexec -n 3 ./build-mpi/mpi_example
+ctest --test-dir build-mpi --output-on-failure
+# Run only communication integration tests:
+ctest --test-dir build-mpi -R '^(mpi_tests|replica_exchange_tests)_' --output-on-failure
 ```
+
+CMake launches tests through `MPIEXEC_EXECUTABLE`, `MPIEXEC_NUMPROC_FLAG`,
+`MPIEXEC_PREFLAGS`, and `MPIEXEC_POSTFLAGS`; set these at configure time for
+your launcher or scheduler. Both integration suites run with 1, 2, 3, and 4
+processes, finite 60-second timeouts, and matching CTest `PROCESSORS` counts.
+Reserve at least four process slots or configure launcher oversubscription as
+appropriate for your MPI installation. The suites check serial equivalence,
+odd process counts, uneven start distribution, idle ranks, subcommunicators,
+and coordinated rank-local validation/callback failures with recovery.
+
+`examples/mpi.cpp` calls both APIs and reuses `demos::nonlinear()` from
+`examples/demo_models.hpp`. It has no external inputs. Every rank constructs
+and prepares the same model; preparation failures are agreed before entering
+the solver. Normal CSV output comes only from communicator rank 0. No files
+are written by ranks. For applications that write local states, include the
+communicator rank (and a communicator/group identifier when needed) in filenames.
 
 Enabling the option requires the MPI C++ component and creates the interface
 target `annealer::mpi`, linked to `MPI::MPI_CXX`. Include `<annealer/mpi.hpp>`.
@@ -146,3 +178,73 @@ and final verification have collective error boundaries before peers proceed to
 communication. There is no partial result or process-failure recovery. This first
 implementation has one replica per rank, a fixed ladder, and blocking exchanges;
 it does not adapt temperatures or move replicas between rank temperatures.
+
+## Reproducible small benchmark
+
+The MPI example is also a compact benchmark. Run the same executable for each
+process count; preserve separate output files for each run:
+
+```sh
+for repeat in 1 2 3; do
+    for ranks in 1 2 3 4; do
+        mpiexec -n "$ranks" ./build-mpi/mpi_example > "mpi-${ranks}-${repeat}.csv"
+    done
+done
+```
+
+Record your CPU, compiler/version, MPI implementation/version, build type, process
+placement, and machine load alongside the CSVs. Use the same build and placement
+policy for comparisons. These are measurements, with no runtime or quality
+thresholds. This four-variable demonstration (three mutable variables, one
+singleton) is deliberately small: communication overhead can dominate, and it
+is not evidence of application-scale speedup.
+
+Each CSV reports process count, base and exchange seeds, starts or replicas,
+schedule parameters, proposal mode, total attempted local moves, maximum elapsed
+solve time across ranks, best energy, and global exchange pair attempts/accepts.
+Timing uses `MPI_Wtime` around each prepared-model solver call after a barrier,
+then `MPI_MAX` reduction. Model construction and preparation, the initial barrier,
+reporting, and reporting reductions are excluded; solver initialization, internal
+communication, and final verification are included. No warmup is performed.
+
+Multi-start always executes exactly the same seven start IDs `[0,7)` with seeds
+42 through 48, independent of process count. Each start uses 16 geometric
+annealing levels from 10 to 0.1 with 2,000 sweeps per level and replacement
+proposals: 96,000 attempted moves per start, 672,000 globally. Compare its
+maximum solve time to the one-process multi-start run for a fixed-work scaling
+measurement. Process counts above seven leave some ranks idle.
+
+Replica exchange uses one replica per process, a fixed geometric ladder from
+0.1 to 10 (one process uses only 0.1), 32,000 sweeps per replica, and exchange
+interval 100. Chain seeds are `42 + rank`; decision seeds are `900 + rank`.
+Total attempted local work is `96,000 * processes`, reported by summing the
+returned local counters. There are 320 exchange rounds with alternating adjacent
+pairs; exchange counters count pairs once, separately from local work. Increasing
+process count changes both the ladder and total work, so this is a quality/work
+comparison, not fixed-work strong scaling. The two modes also have different
+budgets and temperature policies: their raw runtimes do not establish an
+algorithmic speedup. To compare fixed local work for replica exchange, edit
+`total_sweeps` per process count and report the resulting actual counters and
+ladder. Repeat runs and examine energy as well as runtime; neither better energy
+nor speedup is guaranteed.
+
+### Example measurement (2026-11-06)
+
+Local x86-64 Intel Core i7-6700K, GCC 11.5.0, Release (`-O3 -DNDEBUG`),
+MPICH 5.0.2, default launcher placement, no explicit affinity. One measured run
+per process count, no warmup, with a concurrent build and uncontrolled background
+load; these numbers illustrate the output and should not establish scaling claims.
+All configurations and seeds are those above. Preparation is excluded.
+
+| Processes | Multi-start moves | Multi-start seconds (max) | Replica moves | Replica seconds (max) | Exchange accepts/attempts |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 672000 | 0.043580 | 96000 | 0.006308 | 0/0 |
+| 2 | 672000 | 0.025133 | 192000 | 0.008050 | 160/160 |
+| 3 | 672000 | 0.021336 | 288000 | 0.014067 | 320/320 |
+| 4 | 672000 | 0.023691 | 384000 | 0.015851 | 480/480 |
+
+Every row in both modes obtained best energy -1710. All exchanges accepted on
+this small model; the integration tests separately exercise rejection behavior.
+The MPI-disabled Release build passed all 24 serial tests. Both MPI integration
+suites passed at 1, 2, 3, and 4 ranks (8/8 tests), including the existing
+subcommunicator, idle-rank, uneven-distribution, and controlled failure checks.
