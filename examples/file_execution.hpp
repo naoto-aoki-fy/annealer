@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <chrono>
+#include <functional>
 
 namespace file_example {
 template<class F> auto phase_value(const basic::Session& session, F action) {
@@ -40,8 +41,11 @@ inline void validate(const basic::Session& s, basic::Options& o, bool exchange) 
     annealer::mpi_detail::same(MPI_COMM_WORLD, o.trials);
 #endif
 }
+// Initialize with the unmodified input seed: once for multi-start, once per
+// collective replica run, or once per serial trial. MPI APIs offset solver seeds.
 template<class Verify> std::vector<annealer::SolverResult> solve(const basic::Session& s,
-        const annealer::PreparedModel& prepared, const basic::Options& o, std::vector<double>& seconds, std::ostream& output, Verify verify) {
+        const annealer::PreparedModel& prepared, const basic::Options& o, std::vector<double>& seconds, std::ostream& output, Verify verify,
+        std::function<void(annealer::SolverConfig&)> initialize = {}) {
     std::vector<annealer::SolverResult> results;
     auto started = std::chrono::steady_clock::now();
     auto elapsed = [&] { seconds.push_back(std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count()); };
@@ -53,7 +57,12 @@ template<class Verify> std::vector<annealer::SolverResult> solve(const basic::Se
     };
 #ifdef ANNEALER_ENABLE_MPI
     if (o.mode == "mpi-multistart") {
-        const auto r = annealer::solve_multistart(MPI_COMM_WORLD, prepared, o.trials, o.solver);
+        auto config = phase_value(s, [&] {
+            auto c = o.solver;
+            if (initialize) initialize(c);
+            return c;
+        });
+        const auto r = annealer::solve_multistart(MPI_COMM_WORLD, prepared, o.trials, config);
         s.phase([&] {
             for (const auto& run : r.local_runs) verify(run.result);
             save(r.best_assignment, r.best_energy, r.seed);
@@ -78,11 +87,14 @@ template<class Verify> std::vector<annealer::SolverResult> solve(const basic::Se
             started = std::chrono::steady_clock::now();
             config.solver.seed = o.solver.seed + t * s.size;
             config.exchange_seed = o.exchange_seed + t * s.size;
+            s.phase([&] { if (initialize) initialize(config.solver); });
             const auto r = annealer::solve_replica_exchange(MPI_COMM_WORLD, prepared, config);
             s.phase([&] {
                 verify(r.local);
                 save(r.best_assignment, r.best_energy, config.solver.seed + r.best_rank);
                 output << "Run " << t << " global best energy: " << r.best_energy
+                       << "; solver base seed: " << config.solver.seed
+                       << "; exchange seed: " << config.exchange_seed << "; best rank: " << r.best_rank
                        << "\nGlobal exchanges: " << r.exchange_accepts << '/' << r.exchange_attempts << '\n';
             });
         }
@@ -93,6 +105,7 @@ template<class Verify> std::vector<annealer::SolverResult> solve(const basic::Se
         for (std::uint64_t t = 0; t < o.trials; ++t) {
             started = std::chrono::steady_clock::now();
             auto config = o.solver; config.seed += t;
+            if (initialize) initialize(config);
             auto r = annealer::solve(prepared, config);
             verify(r); elapsed(); results.push_back(std::move(r));
         }

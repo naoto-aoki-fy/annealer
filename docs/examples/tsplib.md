@@ -97,3 +97,32 @@ additional memory. This is a public factor-API example, not a specialized TSP
 implementation with 2-opt or constant-time swap deltas. Start with short schedules
 and tune temperatures for each instance's distance scale. Rotations and reversals
 are not fixed, and all positions remain swappable.
+
+## MPI execution
+
+With `ANNEALER_ENABLE_MPI=ON`, select `--mode mpi-multistart` or
+`--mode mpi-replica-exchange` (default: `serial`). For example:
+
+```sh
+mpiexec -n 2 ./build-mpi/tsplib_example instance.dat --mode mpi-multistart --seed 42 --trials 3
+mpiexec -n 2 ./build-mpi/tsplib_example instance.dat --mode mpi-replica-exchange --seed 42 --trials 3 --exchange-interval 10 --exchange-seed 17
+```
+
+Multi-start counts global logical starts and uses one common permutation generated
+from the requested base seed on every rank and for every start. Solver seeds are
+base seed plus logical start ID. Serial trials retain their own permutation from
+each trial seed; serial and MPI trajectories therefore need not match.
+
+Replica exchange counts collective runs. Run `t` uses solver base seed
+`base + t * ranks`, also its common permutation initialization seed, and exchange
+seed `exchange_base + t * ranks`. The MPI API offsets solver seeds by rank;
+input configurations and initial permutations are identical across ranks.
+The cold-to-hot geometric ladder spans final to initial temperature, with
+`levels * sweeps` sweeps per replica. All modes use swap proposals.
+
+Only rank zero reports. The initialization base seed, winning solver seed and
+multi-start ID or replica run and winning rank identify results. Both locally
+returned best/final assignments and the global best are independently verified.
+Reference gaps are printed only for feasible global candidates. Reproducibility
+requires the same rank count, configuration, and standard-library implementation.
+See [MPI execution](../mpi.md) for build and launcher details.

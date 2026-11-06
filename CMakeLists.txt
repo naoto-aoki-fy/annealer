@@ -36,7 +36,7 @@ foreach(demo binary_hubo nonlinear minimal gset_g1 dimacs_coloring maxsat set_co
 endforeach()
 
 if(ANNEALER_ENABLE_MPI)
-    foreach(demo minimal binary_hubo nonlinear multivalued dimacs_coloring maxsat set_covering jsplib_jobshop)
+    foreach(demo minimal binary_hubo nonlinear multivalued dimacs_coloring maxsat set_covering jsplib_jobshop qaplib tsplib)
         target_link_libraries(${demo}_example PRIVATE annealer::mpi)
         target_compile_definitions(${demo}_example PRIVATE ANNEALER_ENABLE_MPI)
     endforeach()
@@ -71,7 +71,7 @@ if(BUILD_TESTING)
         endif()
     endforeach()
     if(ANNEALER_ENABLE_MPI)
-        foreach(demo dimacs_coloring maxsat set_covering jsplib_jobshop)
+        foreach(demo dimacs_coloring maxsat set_covering jsplib_jobshop qaplib tsplib)
             add_test(NAME ${demo}_mpi_cli COMMAND ${CMAKE_COMMAND}
                 "-DEXAMPLE=$<TARGET_FILE:${demo}_example>" "-DKIND=${demo}"
                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"

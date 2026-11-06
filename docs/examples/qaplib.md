@@ -83,3 +83,32 @@ which is O(N^2) terms for dense instances. This is a demonstration of the public
 factor API, not a specialized QAP delta implementation. nug20 costs more than
 nug12 in both memory and time; begin with short schedules. See
 [swap proposals](../solver.md) and [preparation](../preparation.md).
+
+## MPI execution
+
+With `ANNEALER_ENABLE_MPI=ON`, select `--mode mpi-multistart` or
+`--mode mpi-replica-exchange` (default: `serial`). For example:
+
+```sh
+mpiexec -n 2 ./build-mpi/qaplib_example instance.dat --mode mpi-multistart --seed 42 --trials 3
+mpiexec -n 2 ./build-mpi/qaplib_example instance.dat --mode mpi-replica-exchange --seed 42 --trials 3 --exchange-interval 10 --exchange-seed 17
+```
+
+Multi-start counts global logical starts and uses one common permutation generated
+from the requested base seed on every rank and for every start. Solver seeds are
+base seed plus logical start ID. Serial trials retain their own permutation from
+each trial seed; serial and MPI trajectories therefore need not match.
+
+Replica exchange counts collective runs. Run `t` uses solver base seed
+`base + t * ranks`, also its common permutation initialization seed, and exchange
+seed `exchange_base + t * ranks`. The MPI API offsets solver seeds by rank;
+input configurations and initial permutations are identical across ranks.
+The cold-to-hot geometric ladder spans final to initial temperature, with
+`levels * sweeps` sweeps per replica. All modes use swap proposals.
+
+Only rank zero reports. The initialization base seed, winning solver seed and
+multi-start ID or replica run and winning rank identify results. Both locally
+returned best/final assignments and the global best are independently verified.
+Reference gaps are printed only for feasible global candidates. Reproducibility
+requires the same rank count, configuration, and standard-library implementation.
+See [MPI execution](../mpi.md) for build and launcher details.
