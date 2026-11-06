@@ -1,0 +1,14 @@
+Vertices: 800 Edges: 19176
+Initial temperature: 30 Final temperature: 0.050000000000000003 Levels: 200 Sweeps: 100
+Normal seconds: 21.732409638 History seconds: 21.809974963999998 Profile seconds: 24.574067007 History overhead seconds: 0.077565325999998436 Profile overhead seconds: 2.841657369
+selection seconds: 0.71006486394313439 Calls: 16000000
+propose seconds: 15.599060490009073 Calls: 16000000
+metropolis seconds: 0.78463198200328532 Calls: 16000000
+accept seconds: 0.24305058400051696 Calls: 4297572
+rebase seconds: 5.811001112000012 Calls: 16787
+best_candidate seconds: 0.089513745999999908 Calls: 558
+Initialization/finalization/logging/clock residual seconds: 1.3367442290439762
+TTS seconds: 17.198226276 Updates: 9594886
+Seed: 0 Cut: 11624 Best energy: -11624 Attempted: 16000000 Accepted: 4297572 Solve seconds: 24.574067007 Verified: yes
+Best seed: 0 Best cut: 11624 Best energy: -11624
+Total seconds (model, preparation, trials, verification, output): 68.130515326999998

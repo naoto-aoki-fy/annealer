@@ -89,3 +89,34 @@ finding a global optimum is not a correctness guarantee.
 
 The [runnable example](../examples/main.cpp) prints its best assignment, best and
 final energy, move counts, and seed after evaluating the original assignment.
+
+## Instrumented prepared solves
+
+`solve_instrumented(prepared, config, InstrumentationConfig{.profile = false})`
+returns an `InstrumentedResult`: the ordinary `result`, `history`, total
+`seconds`, and six `profile` intervals. The prepared model owns its source model and can be reused across solves.
+
+History begins with the validated initial energy at attempted/accepted count
+zero, then records only strict improvements confirmed by full energy evaluation.
+Each `BestUpdate` contains `seconds`, `attempted_moves`, `accepted_moves`, and
+`best_energy`. Time starts before initialization, excluding model construction
+and preparation. Equal-energy accepted moves do not create records. Zero levels,
+zero sweeps, and immutable models still produce an initial record. Instrumentation
+never stops a solve on target achievement.
+
+The normal, history, and profile paths instantiate the same internal loop.
+History and timing operations are removed with `if constexpr` in normal solves.
+Random draws, acceptance, best-candidate validation, and the rebase cadence of
+256 accepted moves are shared.
+
+With `.profile = true`, `profile_names` identifies six disjoint intervals:
+proposal selection, incremental proposal evaluation, acceptance RNG and criterion,
+state acceptance, rebase, and full evaluation/storage of best candidates.
+Each interval exposes seconds and calls. Best-candidate calls include candidates
+that fail exact validation. Initial and final full evaluations are outside that
+interval. Total time minus the interval sum contains initialization, finalization,
+history logging, scheduling, counters, and clock/instrumentation overhead; it
+cannot isolate each of these costs. Per-move clock calls perturb performance.
+Use history-only solves for time-budget comparisons and compare all three paths
+with the same seed to assess measurement cost. No timing threshold defines test
+success. See the [G1 guide](examples/gset-g1.md) for executable commands and CSVs.

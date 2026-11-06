@@ -4,6 +4,8 @@
 #include <annealer/prepared.hpp>
 
 #include <optional>
+#include <array>
+#include <chrono>
 #include <random>
 
 namespace annealer {
@@ -25,6 +27,25 @@ struct SolverResult {
     std::size_t attempted_moves;
     std::size_t accepted_moves;
     std::uint64_t seed;
+};
+
+struct BestUpdate {
+    double seconds;
+    std::size_t attempted_moves, accepted_moves;
+    double best_energy;
+};
+struct ProfileInterval {
+    double seconds = 0;
+    std::size_t calls = 0;
+};
+inline constexpr std::array<const char*, 6> profile_names{
+    "selection", "propose", "metropolis", "accept", "rebase", "best_candidate"};
+struct InstrumentationConfig { bool profile = false; };
+struct InstrumentedResult {
+    SolverResult result;
+    std::vector<BestUpdate> history;
+    double seconds = 0;
+    std::array<ProfileInterval, 6> profile{};
 };
 
 namespace detail {
@@ -166,7 +187,33 @@ inline SolverResult solve_reference(const Model& model, const SolverConfig& conf
     return result;
 }
 
-inline SolverResult solve(const PreparedModel& prepared, const SolverConfig& config = {}) {
+namespace detail {
+template<bool History, bool Profile>
+inline SolverResult solve_loop(const PreparedModel& prepared, const SolverConfig& config,
+                               InstrumentedResult* instrumentation = nullptr) {
+    using Clock = std::chrono::steady_clock;
+    Clock::time_point start{};
+    if constexpr (History) start = Clock::now();
+    auto timed = [&]<class F>(std::size_t interval, F&& action) -> decltype(auto) {
+        if constexpr (Profile) {
+            const auto begin = Clock::now();
+            // A scope guard also covers return-value construction.
+            struct Guard {
+                ProfileInterval& item;
+                Clock::time_point begin;
+                ~Guard() { item.seconds += std::chrono::duration<double>(Clock::now()-begin).count(); ++item.calls; }
+            } guard{instrumentation->profile[interval], begin};
+            return action();
+        } else {
+            (void)interval;
+            return action();
+        }
+    };
+    auto record = [&](const SolverResult& result) {
+        if constexpr (History) instrumentation->history.push_back({
+            std::chrono::duration<double>(Clock::now()-start).count(),
+            result.attempted_moves, result.accepted_moves, result.best_energy});
+    };
     detail::validate_temperatures(config.initial_temperature, config.final_temperature);
     const auto& model = prepared.source();
     std::mt19937_64 random(config.seed);
@@ -183,6 +230,7 @@ inline SolverResult solve(const PreparedModel& prepared, const SolverConfig& con
     PreparedState state(prepared, initial);
     const double initial_energy = full_energy(model, initial);
     SolverResult result{initial, initial_energy, initial, initial_energy, 0, 0, config.seed};
+    record(result);
     std::vector<Variable> mutable_variables;
     for (Variable i = 0; i < model.domains().size(); ++i) {
         if (model.domains()[i].values().size() > 1) {
@@ -196,23 +244,31 @@ inline SolverResult solve(const PreparedModel& prepared, const SolverConfig& con
             const double temperature = detail::temperature_unchecked(config.initial_temperature,
                 config.final_temperature, config.temperature_levels, level);
             for (std::size_t move = 0; move < moves; ++move) {
-                const auto proposal = detail::draw_proposal(model, mutable_variables, state.indices(), random);
-                const double delta = state.propose(proposal.variable, proposal.index);
+                const auto proposal = timed(0, [&] { return detail::draw_proposal(model, mutable_variables, state.indices(), random); });
+                const double delta = timed(1, [&] { return state.propose(proposal.variable, proposal.index); });
                 ++result.attempted_moves;
-                const double uniform = delta > 0 ? static_cast<double>(random() >> 11) * 0x1.0p-53 : 0.0;
-                if (metropolis_accept(delta, temperature, uniform)) {
-                    state.accept();
+                const bool accepted = timed(2, [&] {
+                    const double uniform = delta > 0 ? static_cast<double>(random() >> 11) * 0x1.0p-53 : 0.0;
+                    return metropolis_accept(delta, temperature, uniform);
+                });
+                if (accepted) {
+                    timed(3, [&] { state.accept(); });
                     ++result.accepted_moves;
                     // Correct drift on a fixed accepted-move cadence.
                     if (result.accepted_moves % 256 == 0) {
-                        state.rebase();
+                        timed(4, [&] { state.rebase(); });
                     }
                     if (state.energy() < result.best_energy) {
-                        const double exact = full_energy(model, state.assignment());
-                        if (exact < result.best_energy) {
-                            std::copy(state.assignment().begin(), state.assignment().end(), result.best_assignment.begin());
-                            result.best_energy = exact;
-                        }
+                        bool improved = false;
+                        timed(5, [&] {
+                            const double exact = full_energy(model, state.assignment());
+                            if (exact < result.best_energy) {
+                                std::copy(state.assignment().begin(), state.assignment().end(), result.best_assignment.begin());
+                                result.best_energy = exact;
+                                improved = true;
+                            }
+                        });
+                        if (improved) record(result);
                     }
                 }
             }
@@ -221,7 +277,22 @@ inline SolverResult solve(const PreparedModel& prepared, const SolverConfig& con
     result.final_assignment = state.assignment();
     result.final_energy = full_energy(model, result.final_assignment);
     result.best_energy = full_energy(model, result.best_assignment);
+    if constexpr (History) instrumentation->seconds = std::chrono::duration<double>(Clock::now()-start).count();
     return result;
+}
+
+} // namespace detail
+
+inline SolverResult solve(const PreparedModel& prepared, const SolverConfig& config = {}) {
+    return detail::solve_loop<false, false>(prepared, config);
+}
+inline InstrumentedResult solve_instrumented(const PreparedModel& prepared,
+        const SolverConfig& config = {}, const InstrumentationConfig& instrumentation_config = {}) {
+    InstrumentedResult output;
+    output.result = instrumentation_config.profile
+        ? detail::solve_loop<true, true>(prepared, config, &output)
+        : detail::solve_loop<true, false>(prepared, config, &output);
+    return output;
 }
 
 inline SolverResult solve(const Model& model, const SolverConfig& config = {}) {

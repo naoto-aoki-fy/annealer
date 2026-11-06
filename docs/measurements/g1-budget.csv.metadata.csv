@@ -1,0 +1,17 @@
+key,value
+compiler,"GNU 11.5.0"
+build,"Release; IPO=OFF"
+flags,"-Wall -Wextra -Wpedantic -Wconversion -O3 -DNDEBUG"
+input,"G1"
+vertices,800
+edges,19176
+loading_preparation_seconds,0.013674499
+budget,240
+sweeps,100
+initial_temperature,30
+final_temperature,0.050000000000000003
+first_seed,0
+comparisons,1
+target_cut,11624
+cpu,"model name	: Intel(R) Core(TM) i7-6700K CPU @ 4.00GHz"
+result_output_seconds,0.13691436600000001

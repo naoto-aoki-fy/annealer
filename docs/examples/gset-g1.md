@@ -12,7 +12,7 @@ cost across fixed solver configurations.
 
 The [example source](../../examples/gset_g1.cpp) uses only public library APIs;
 its [shared helper](../../examples/gset_maxcut.hpp) implements parsing,
-formulation, and independent cut evaluation. No core solver changes are needed.
+formulation, and independent cut evaluation.
 
 ## Mathematical Formulation
 
@@ -143,3 +143,75 @@ and poorly scaled signed weights can affect trajectories and verification;
 finite input arithmetic can still overflow. G1's unit weights are exactly
 representable at this scale. See the [solver documentation](../solver.md) for
 schedule, budget, and reproducibility details.
+
+## TTS and detailed measurement
+
+`--target-cut W` reports the first history record with `-best_energy >= W`;
+it prints elapsed solve seconds and attempted moves, or explicitly reports
+non-achievement. A target present initially has zero attempted moves and the
+actual initialization time. It does not shorten a trial. `--reference-cut`
+continues to control only the displayed gap.
+
+`--trace-csv PATH` writes initial and strict best updates after each trial,
+including levels, sweeps, temperatures, seed, seconds, attempted and accepted
+moves, energy, and cut. History is buffered during exploration. Existing files
+at output paths are overwritten.
+
+`--profile` compares detailed profiling, normal execution, and history-only
+execution for each trial with identical configuration and seed. It checks
+assignments, energies, and move counts for equality and independently validates
+returned best and final cuts. It reports times, absolute overhead seconds, six
+disjoint interval totals/call counts, and the residual described in the
+[solver API](../solver.md#instrumented-prepared-solves).
+
+```sh
+cmake -S . -B /tmp/annealer-build -DCMAKE_BUILD_TYPE=Release \
+  -DANNEALER_BUILD_BENCHMARKS=ON \
+  -DCMAKE_CXX_FLAGS='-Wall -Wextra -Wpedantic -Wconversion'
+cmake --build /tmp/annealer-build --parallel 2
+ctest --test-dir /tmp/annealer-build --output-on-failure
+/tmp/annealer-build/gset_g1_example G1 --trials 1 --levels 200 --sweeps 100 \
+  --target-cut 11624 --profile --trace-csv docs/measurements/g1-profile.csv
+/tmp/annealer-build/gset_benchmark G1 --levels 50,100,200 --budget 240 \
+  --target-cut 11624 --csv docs/measurements/g1-budget.csv
+```
+
+## Equal-budget multi-start comparison
+
+The optional `gset_benchmark` target shares parsing, model construction, cut
+validation, and history helpers with the example. Defaults are levels 50,100,200,
+100 sweeps, temperatures 30 to 0.05, 240 seconds per setting, and seeds increasing
+from zero independently for each setting. One comparison is performed per
+setting. There is no default target; explicitly pass 11624 for this experiment.
+CLI overrides include `--levels` (comma-separated), `--budget` (positive finite
+seconds), `--seed`, `--sweeps`, both temperatures, `--target-cut`, and `--csv`.
+
+The common input loading/model preparation time is recorded separately.
+Per-setting wall time includes restart initialization, history management,
+exploration, and independent validation of best and final assignments. No result
+file or console output occurs inside the restart loop. Each started iteration
+runs its full update budget; an iteration that finishes after the wall deadline
+is marked incomplete. Its history through the deadline still contributes to
+the best cut and first target time, but it contributes neither to completed
+iteration counts nor to their success rate. Updates exactly at the deadline
+are included. No target hit means an empty CSV time cell, never zero.
+
+The main CSV contains raw histories, including post-budget updates flagged
+`within_budget=0`. Add `offset_seconds` to a history's `seconds` to locate it
+within a setting. Sibling files append these suffixes:
+
+- `.iterations.csv`: per-seed start/end, completion flag, solve time, TTS,
+  attempted moves at target, final best cut, move counts, and attempted moves/s.
+  Per-iteration TTS and best cut describe the entire iteration, including an
+  overrun; use the summary for budget-limited results.
+- `.summary.csv`: budget-limited best cut, first overall target time, completed
+  count, successes, descriptive success percentage, elapsed time, and overrun.
+  Success percentage is empty when no iteration completes.
+- `.metadata.csv`: compiler, flags, build, CPU (on Linux), input path/dimensions,
+  seed, target, schedule, loading/preparation time, and result output time.
+
+The success fraction from this single comparison is descriptive. First overall
+target time comes directly from timestamped histories; it is not estimated
+from the average TTS among successful iterations. Detailed per-move profiling
+is deliberately disabled for these comparisons. See the
+[recorded measurement report](../measurements/g1-results.md) and its CSV links.

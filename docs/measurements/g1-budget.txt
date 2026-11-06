@@ -1,0 +1,80 @@
+Levels: 50 Seed: 0 Completed: 1 Best cut: 11620 Moves/s: 696530 TTS: not reached Verified: yes
+Levels: 50 Seed: 1 Completed: 1 Best cut: 11598 Moves/s: 692864 TTS: not reached Verified: yes
+Levels: 50 Seed: 2 Completed: 1 Best cut: 11589 Moves/s: 696301 TTS: not reached Verified: yes
+Levels: 50 Seed: 3 Completed: 1 Best cut: 11595 Moves/s: 696559 TTS: not reached Verified: yes
+Levels: 50 Seed: 4 Completed: 1 Best cut: 11620 Moves/s: 695861 TTS: not reached Verified: yes
+Levels: 50 Seed: 5 Completed: 1 Best cut: 11624 Moves/s: 696764 TTS: 4.14825 Verified: yes
+Levels: 50 Seed: 6 Completed: 1 Best cut: 11602 Moves/s: 695080 TTS: not reached Verified: yes
+Levels: 50 Seed: 7 Completed: 1 Best cut: 11617 Moves/s: 695881 TTS: not reached Verified: yes
+Levels: 50 Seed: 8 Completed: 1 Best cut: 11624 Moves/s: 696526 TTS: 4.12892 Verified: yes
+Levels: 50 Seed: 9 Completed: 1 Best cut: 11624 Moves/s: 694821 TTS: 4.15348 Verified: yes
+Levels: 50 Seed: 10 Completed: 1 Best cut: 11624 Moves/s: 696960 TTS: 3.98449 Verified: yes
+Levels: 50 Seed: 11 Completed: 1 Best cut: 11602 Moves/s: 696488 TTS: not reached Verified: yes
+Levels: 50 Seed: 12 Completed: 1 Best cut: 11620 Moves/s: 694760 TTS: not reached Verified: yes
+Levels: 50 Seed: 13 Completed: 1 Best cut: 11606 Moves/s: 697590 TTS: not reached Verified: yes
+Levels: 50 Seed: 14 Completed: 1 Best cut: 11620 Moves/s: 694356 TTS: not reached Verified: yes
+Levels: 50 Seed: 15 Completed: 1 Best cut: 11614 Moves/s: 696697 TTS: not reached Verified: yes
+Levels: 50 Seed: 16 Completed: 1 Best cut: 11597 Moves/s: 695847 TTS: not reached Verified: yes
+Levels: 50 Seed: 17 Completed: 1 Best cut: 11597 Moves/s: 695894 TTS: not reached Verified: yes
+Levels: 50 Seed: 18 Completed: 1 Best cut: 11588 Moves/s: 695814 TTS: not reached Verified: yes
+Levels: 50 Seed: 19 Completed: 1 Best cut: 11620 Moves/s: 696926 TTS: not reached Verified: yes
+Levels: 50 Seed: 20 Completed: 1 Best cut: 11624 Moves/s: 696355 TTS: 4.11431 Verified: yes
+Levels: 50 Seed: 21 Completed: 1 Best cut: 11613 Moves/s: 696728 TTS: not reached Verified: yes
+Levels: 50 Seed: 22 Completed: 1 Best cut: 11602 Moves/s: 694198 TTS: not reached Verified: yes
+Levels: 50 Seed: 23 Completed: 1 Best cut: 11624 Moves/s: 695728 TTS: 4.00819 Verified: yes
+Levels: 50 Seed: 24 Completed: 1 Best cut: 11579 Moves/s: 690718 TTS: not reached Verified: yes
+Levels: 50 Seed: 25 Completed: 1 Best cut: 11598 Moves/s: 694173 TTS: not reached Verified: yes
+Levels: 50 Seed: 26 Completed: 1 Best cut: 11603 Moves/s: 694696 TTS: not reached Verified: yes
+Levels: 50 Seed: 27 Completed: 1 Best cut: 11624 Moves/s: 694143 TTS: 4.09174 Verified: yes
+Levels: 50 Seed: 28 Completed: 1 Best cut: 11624 Moves/s: 696100 TTS: 4.08857 Verified: yes
+Levels: 50 Seed: 29 Completed: 1 Best cut: 11624 Moves/s: 696328 TTS: 4.09105 Verified: yes
+Levels: 50 Seed: 30 Completed: 1 Best cut: 11597 Moves/s: 696179 TTS: not reached Verified: yes
+Levels: 50 Seed: 31 Completed: 1 Best cut: 11602 Moves/s: 696217 TTS: not reached Verified: yes
+Levels: 50 Seed: 32 Completed: 1 Best cut: 11618 Moves/s: 696482 TTS: not reached Verified: yes
+Levels: 50 Seed: 33 Completed: 1 Best cut: 11624 Moves/s: 694067 TTS: 4.00868 Verified: yes
+Levels: 50 Seed: 34 Completed: 1 Best cut: 11624 Moves/s: 696859 TTS: 3.95103 Verified: yes
+Levels: 50 Seed: 35 Completed: 1 Best cut: 11615 Moves/s: 697112 TTS: not reached Verified: yes
+Levels: 50 Seed: 36 Completed: 1 Best cut: 11583 Moves/s: 696981 TTS: not reached Verified: yes
+Levels: 50 Seed: 37 Completed: 1 Best cut: 11614 Moves/s: 692848 TTS: not reached Verified: yes
+Levels: 50 Seed: 38 Completed: 1 Best cut: 11624 Moves/s: 696112 TTS: 4.09818 Verified: yes
+Levels: 50 Seed: 39 Completed: 1 Best cut: 11624 Moves/s: 696634 TTS: 4.00543 Verified: yes
+Levels: 50 Seed: 40 Completed: 1 Best cut: 11624 Moves/s: 694515 TTS: 4.11136 Verified: yes
+Levels: 50 Seed: 41 Completed: 0 Best cut: 11602 Moves/s: 694539 TTS: not reached Verified: yes
+Summary levels: 50 Best within budget: 11624 First target: 32.9006 Completed: 41 Successful: 14 Success percent: 34.1463 Overrun seconds: 1.51909
+Levels: 100 Seed: 0 Completed: 1 Best cut: 11624 Moves/s: 704696 TTS: 7.86276 Verified: yes
+Levels: 100 Seed: 1 Completed: 1 Best cut: 11595 Moves/s: 703811 TTS: not reached Verified: yes
+Levels: 100 Seed: 2 Completed: 1 Best cut: 11596 Moves/s: 705208 TTS: not reached Verified: yes
+Levels: 100 Seed: 3 Completed: 1 Best cut: 11621 Moves/s: 705033 TTS: not reached Verified: yes
+Levels: 100 Seed: 4 Completed: 1 Best cut: 11624 Moves/s: 704051 TTS: 8.01976 Verified: yes
+Levels: 100 Seed: 5 Completed: 1 Best cut: 11624 Moves/s: 703291 TTS: 8.11678 Verified: yes
+Levels: 100 Seed: 6 Completed: 1 Best cut: 11620 Moves/s: 702898 TTS: not reached Verified: yes
+Levels: 100 Seed: 7 Completed: 1 Best cut: 11624 Moves/s: 703644 TTS: 8.09484 Verified: yes
+Levels: 100 Seed: 8 Completed: 1 Best cut: 11595 Moves/s: 702685 TTS: not reached Verified: yes
+Levels: 100 Seed: 9 Completed: 1 Best cut: 11624 Moves/s: 703459 TTS: 8.06875 Verified: yes
+Levels: 100 Seed: 10 Completed: 1 Best cut: 11615 Moves/s: 704859 TTS: not reached Verified: yes
+Levels: 100 Seed: 11 Completed: 1 Best cut: 11624 Moves/s: 703487 TTS: 8.07748 Verified: yes
+Levels: 100 Seed: 12 Completed: 1 Best cut: 11624 Moves/s: 702789 TTS: 8.28068 Verified: yes
+Levels: 100 Seed: 13 Completed: 1 Best cut: 11624 Moves/s: 702209 TTS: 8.06579 Verified: yes
+Levels: 100 Seed: 14 Completed: 1 Best cut: 11595 Moves/s: 703072 TTS: not reached Verified: yes
+Levels: 100 Seed: 15 Completed: 1 Best cut: 11621 Moves/s: 704205 TTS: not reached Verified: yes
+Levels: 100 Seed: 16 Completed: 1 Best cut: 11598 Moves/s: 702831 TTS: not reached Verified: yes
+Levels: 100 Seed: 17 Completed: 1 Best cut: 11624 Moves/s: 704144 TTS: 7.93943 Verified: yes
+Levels: 100 Seed: 18 Completed: 1 Best cut: 11624 Moves/s: 703633 TTS: 7.91153 Verified: yes
+Levels: 100 Seed: 19 Completed: 1 Best cut: 11596 Moves/s: 704024 TTS: not reached Verified: yes
+Levels: 100 Seed: 20 Completed: 1 Best cut: 11602 Moves/s: 707629 TTS: not reached Verified: yes
+Levels: 100 Seed: 21 Completed: 0 Best cut: 11594 Moves/s: 726709 TTS: not reached Verified: yes
+Summary levels: 100 Best within budget: 11624 First target: 7.86276 Completed: 21 Successful: 10 Success percent: 47.619 Overrun seconds: 9.68782
+Levels: 200 Seed: 0 Completed: 1 Best cut: 11624 Moves/s: 739734 TTS: 15.3102 Verified: yes
+Levels: 200 Seed: 1 Completed: 1 Best cut: 11624 Moves/s: 738925 TTS: 14.7988 Verified: yes
+Levels: 200 Seed: 2 Completed: 1 Best cut: 11624 Moves/s: 739116 TTS: 15.1357 Verified: yes
+Levels: 200 Seed: 3 Completed: 1 Best cut: 11624 Moves/s: 738954 TTS: 14.977 Verified: yes
+Levels: 200 Seed: 4 Completed: 1 Best cut: 11624 Moves/s: 739885 TTS: 15.1043 Verified: yes
+Levels: 200 Seed: 5 Completed: 1 Best cut: 11602 Moves/s: 736465 TTS: not reached Verified: yes
+Levels: 200 Seed: 6 Completed: 1 Best cut: 11624 Moves/s: 739915 TTS: 15.15 Verified: yes
+Levels: 200 Seed: 7 Completed: 1 Best cut: 11624 Moves/s: 740037 TTS: 15.158 Verified: yes
+Levels: 200 Seed: 8 Completed: 1 Best cut: 11624 Moves/s: 739093 TTS: 15.2478 Verified: yes
+Levels: 200 Seed: 9 Completed: 1 Best cut: 11624 Moves/s: 739330 TTS: 15.3218 Verified: yes
+Levels: 200 Seed: 10 Completed: 1 Best cut: 11624 Moves/s: 739710 TTS: 14.9205 Verified: yes
+Levels: 200 Seed: 11 Completed: 0 Best cut: 11602 Moves/s: 737918 TTS: not reached Verified: yes
+Summary levels: 200 Best within budget: 11624 First target: 15.3102 Completed: 11 Successful: 10 Success percent: 90.9091 Overrun seconds: 19.7818
+Loading/preparation seconds: 0.0136745 Result output seconds: 0.136914
