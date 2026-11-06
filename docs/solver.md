@@ -155,3 +155,37 @@ standard-library implementation. It uses its own sequence of proposals.
 
 See [optional MPI multi-start](mpi.md) for collective execution of reproducible
 independent starts using this solver and a caller-provided communicator.
+
+## Internal resumable execution
+
+`detail::ExecutionState<History, Profile>` is an internal implementation interface,
+not a stable public API. It borrows a `PreparedModel` and, when enabled, an
+`InstrumentedResult`; both must outlive the chain. Construction initializes the
+assignment, RNG, caches, best state, and counters once. Ordinary `solve` and
+`solve_instrumented` drive this same state through their existing cooling schedule.
+`solve_reference` remains a separate full-evaluation implementation.
+
+`advance_attempts(count, temperature)` and `advance_sweeps(count, temperature)`
+continue at a supplied positive finite temperature. A sweep uses the existing
+proposal-mode-specific attempt count. Zero work leaves the trajectory unchanged;
+temperature validation still applies. Counts are checked for multiplication and
+cumulative counter overflow before work. Splitting blocks preserves random draws,
+best updates, and the rebase every 256 accumulated accepted moves.
+
+`assignment()` and `energy()` inspect the current prepared state (whose energy
+may include normal incremental rounding drift). `snapshot()` returns a usual
+`SolverResult` with fully evaluated energies without changing the running caches.
+`finish()` additionally records elapsed instrumentation time. Neither operation
+reseeds or resets the chain.
+
+`install_assignment(assignment)` validates and builds replacement domain indices,
+term caches, and proposal scratch before installing the state. Invalid assignments
+or evaluation failures leave the chain unchanged. Installation preserves the RNG,
+move counters, rebase cadence, and prior best. A strict full-energy improvement
+updates the best and, when enabled, records a history entry at the current move
+counts. Imports do not count as local moves or profiling kernel calls. The new
+prepared state discards any old pending proposal. Installation may allocate;
+the ordinary update kernel adds no allocations or runtime callback dispatch.
+As with serial solving, exceptions during local updates abort execution; resuming
+a chain after an update exception is not supported. The execution core includes
+no MPI headers or operations.

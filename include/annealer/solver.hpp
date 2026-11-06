@@ -4,6 +4,7 @@
 #include <annealer/prepared.hpp>
 
 #include <optional>
+#include <memory>
 #include <array>
 #include <chrono>
 #include <random>
@@ -207,100 +208,160 @@ inline SolverResult solve_reference(const Model& model, const SolverConfig& conf
 }
 
 namespace detail {
-template<bool History, bool Profile>
-inline SolverResult solve_loop(const PreparedModel& prepared, const SolverConfig& config,
-                               InstrumentedResult* instrumentation = nullptr) {
+template<bool History = false, bool Profile = false>
+class ExecutionState {
     using Clock = std::chrono::steady_clock;
+    const PreparedModel& prepared_;
+    bool swaps_;
+    InstrumentedResult* instrumentation;
     Clock::time_point start{};
-    if constexpr (History) start = Clock::now();
-    auto timed = [&]<class F>(std::size_t interval, F&& action) -> decltype(auto) {
+    std::mt19937_64 random;
+    std::unique_ptr<PreparedState> state_;
+    SolverResult result;
+    std::vector<Variable> mutable_variables;
+
+    template<class F>
+    decltype(auto) timed(std::size_t interval, F&& action) {
         if constexpr (Profile) {
-            const auto begin = Clock::now();
-            // A scope guard also covers return-value construction.
             struct Guard {
                 ProfileInterval& item;
                 Clock::time_point begin;
                 ~Guard() { item.seconds += std::chrono::duration<double>(Clock::now()-begin).count(); ++item.calls; }
-            } guard{instrumentation->profile[interval], begin};
+            } guard{instrumentation->profile[interval], Clock::now()};
             return action();
         } else {
             (void)interval;
             return action();
         }
-    };
-    auto record = [&](const SolverResult& result) {
+    }
+    void record(const SolverResult& value) {
         if constexpr (History) instrumentation->history.push_back({
             std::chrono::duration<double>(Clock::now()-start).count(),
-            result.attempted_moves, result.accepted_moves, result.best_energy});
-    };
-    detail::validate_temperatures(config.initial_temperature, config.final_temperature);
-    const auto& model = prepared.source();
-    detail::validate_swap_domains(model, config.swap_proposals);
-    std::mt19937_64 random(config.seed);
-    Assignment initial;
-    if (config.initial_assignment) {
-        initial = *config.initial_assignment;
-    } else {
-        initial.reserve(model.domains().size());
-        for (const auto& domain : model.domains()) {
-            std::uniform_int_distribution<std::size_t> choose(0, domain.values().size() - 1);
-            initial.push_back(domain.values()[choose(random)]);
+            value.attempted_moves, value.accepted_moves, value.best_energy});
+    }
+public:
+    // The prepared model and optional instrumentation must outlive this chain.
+    ExecutionState(const PreparedModel& prepared, const SolverConfig& config,
+                   InstrumentedResult* output = nullptr)
+        : prepared_(prepared), swaps_(config.swap_proposals), instrumentation(output), random(config.seed) {
+        if constexpr (History || Profile) {
+            if (!instrumentation) throw std::invalid_argument("instrumentation output is required");
+        }
+        if constexpr (History) start = Clock::now();
+        detail::validate_temperatures(config.initial_temperature, config.final_temperature);
+        const auto& model = prepared.source();
+        detail::validate_swap_domains(model, config.swap_proposals);
+
+        Assignment initial;
+        if (config.initial_assignment) {
+            initial = *config.initial_assignment;
+        } else {
+            initial.reserve(model.domains().size());
+            for (const auto& domain : model.domains()) {
+                std::uniform_int_distribution<std::size_t> choose(0, domain.values().size() - 1);
+                initial.push_back(domain.values()[choose(random)]);
+            }
+        }
+        state_ = std::make_unique<PreparedState>(prepared, initial);
+        const double initial_energy = full_energy(model, initial);
+        result = SolverResult{initial, initial_energy, initial, initial_energy, 0, 0, config.seed};
+        record(result);
+
+        for (Variable i = 0; i < model.domains().size(); ++i) {
+            if (config.swap_proposals ? model.domains().size() >= 2 : model.domains()[i].values().size() > 1) {
+                mutable_variables.push_back(i);
+            }
         }
     }
-    PreparedState state(prepared, initial);
-    const double initial_energy = full_energy(model, initial);
-    SolverResult result{initial, initial_energy, initial, initial_energy, 0, 0, config.seed};
-    record(result);
-    std::vector<Variable> mutable_variables;
-    for (Variable i = 0; i < model.domains().size(); ++i) {
-        if (config.swap_proposals ? model.domains().size() >= 2 : model.domains()[i].values().size() > 1) {
-            mutable_variables.push_back(i);
-        }
-    }
-    if (!mutable_variables.empty() && config.temperature_levels && config.sweeps_per_level) {
-        const auto moves = detail::checked_count(mutable_variables.size(), config.sweeps_per_level);
-        detail::checked_count(moves, config.temperature_levels);
-        for (std::size_t level = 0; level < config.temperature_levels; ++level) {
-            const double temperature = detail::temperature_unchecked(config.initial_temperature,
-                config.final_temperature, config.temperature_levels, level);
-            for (std::size_t move = 0; move < moves; ++move) {
-                const auto proposal = timed(0, [&] { return config.swap_proposals ? detail::draw_swap(model.domains().size(), random)
-                        : detail::draw_proposal(model, mutable_variables, state.indices(), random); });
-                const double delta = timed(1, [&] { return config.swap_proposals ? state.propose_swap(proposal.variable, proposal.index)
-                        : state.propose(proposal.variable, proposal.index); });
-                ++result.attempted_moves;
-                const bool accepted = timed(2, [&] {
-                    const double uniform = delta > 0 ? static_cast<double>(random() >> 11) * 0x1.0p-53 : 0.0;
-                    return metropolis_accept(delta, temperature, uniform);
-                });
-                if (accepted) {
-                    timed(3, [&] { state.accept(); });
-                    ++result.accepted_moves;
-                    // Correct drift on a fixed accepted-move cadence.
-                    if (result.accepted_moves % 256 == 0) {
-                        timed(4, [&] { state.rebase(); });
-                    }
-                    if (state.energy() < result.best_energy) {
-                        bool improved = false;
-                        timed(5, [&] {
-                            const double exact = full_energy(model, state.assignment());
-                            if (exact < result.best_energy) {
-                                std::copy(state.assignment().begin(), state.assignment().end(), result.best_assignment.begin());
-                                result.best_energy = exact;
-                                improved = true;
-                            }
-                        });
-                        if (improved) record(result);
-                    }
+
+    std::size_t attempts_per_sweep() const noexcept { return mutable_variables.size(); }
+    const Assignment& assignment() const noexcept { return state_->assignment(); }
+    double energy() const noexcept { return state_->energy(); }
+
+    void advance_attempts(std::size_t attempts, double temperature) {
+        detail::validate_temperatures(temperature, temperature);
+        if (mutable_variables.empty()) return;
+        if (attempts > std::numeric_limits<std::size_t>::max() - result.attempted_moves)
+            throw std::overflow_error("proposal budget exceeds the move counter range");
+        auto& state = *state_;
+        const auto& model = prepared_.source();
+        for (std::size_t move = 0; move < attempts; ++move) {
+            const auto proposal = timed(0, [&] { return swaps_ ? detail::draw_swap(model.domains().size(), random)
+                    : detail::draw_proposal(model, mutable_variables, state.indices(), random); });
+            const double delta = timed(1, [&] { return swaps_ ? state.propose_swap(proposal.variable, proposal.index)
+                    : state.propose(proposal.variable, proposal.index); });
+            ++result.attempted_moves;
+            const bool accepted = timed(2, [&] {
+                const double uniform = delta > 0 ? static_cast<double>(random() >> 11) * 0x1.0p-53 : 0.0;
+                return metropolis_accept(delta, temperature, uniform);
+            });
+            if (accepted) {
+                timed(3, [&] { state.accept(); });
+                ++result.accepted_moves;
+                // Correct drift on a fixed accepted-move cadence.
+                if (result.accepted_moves % 256 == 0) {
+                    timed(4, [&] { state.rebase(); });
+                }
+                if (state.energy() < result.best_energy) {
+                    bool improved = false;
+                    timed(5, [&] {
+                        const double exact = full_energy(model, state.assignment());
+                        if (exact < result.best_energy) {
+                            std::copy(state.assignment().begin(), state.assignment().end(), result.best_assignment.begin());
+                            result.best_energy = exact;
+                            improved = true;
+                        }
+                    });
+                    if (improved) record(result);
                 }
             }
         }
     }
-    result.final_assignment = state.assignment();
-    result.final_energy = full_energy(model, result.final_assignment);
-    result.best_energy = full_energy(model, result.best_assignment);
-    if constexpr (History) instrumentation->seconds = std::chrono::duration<double>(Clock::now()-start).count();
-    return result;
+    void advance_sweeps(std::size_t sweeps, double temperature) {
+        advance_attempts(detail::checked_count(sweeps, attempts_per_sweep()), temperature);
+    }
+
+    // Construct and verify before committing, so failed imports preserve the chain.
+    void install_assignment(const Assignment& assignment) {
+        auto replacement = std::make_unique<PreparedState>(prepared_, assignment);
+        const double exact = full_energy(prepared_.source(), assignment);
+        if (exact < result.best_energy) {
+            // Allocate a history entry before changing the chain, if requested.
+            if constexpr (History) instrumentation->history.push_back({
+                std::chrono::duration<double>(Clock::now()-start).count(),
+                result.attempted_moves, result.accepted_moves, exact});
+            std::copy(assignment.begin(), assignment.end(), result.best_assignment.begin());
+            result.best_energy = exact;
+        }
+        state_.swap(replacement); // Also discards any rejected pending proposal.
+    }
+
+    SolverResult snapshot() const {
+        auto output = result;
+        output.final_assignment = state_->assignment();
+        output.final_energy = full_energy(prepared_.source(), output.final_assignment);
+        output.best_energy = full_energy(prepared_.source(), output.best_assignment);
+        return output;
+    }
+    SolverResult finish() const {
+        auto output = snapshot();
+        if constexpr (History) instrumentation->seconds = std::chrono::duration<double>(Clock::now()-start).count();
+        return output;
+    }
+};
+
+template<bool History, bool Profile>
+inline SolverResult solve_loop(const PreparedModel& prepared, const SolverConfig& config,
+                               InstrumentedResult* instrumentation = nullptr) {
+    ExecutionState<History, Profile> chain(prepared, config, instrumentation);
+    if (chain.attempts_per_sweep() && config.temperature_levels && config.sweeps_per_level) {
+        const auto moves = detail::checked_count(chain.attempts_per_sweep(), config.sweeps_per_level);
+        detail::checked_count(moves, config.temperature_levels);
+        for (std::size_t level = 0; level < config.temperature_levels; ++level)
+            chain.advance_attempts(moves, detail::temperature_unchecked(config.initial_temperature,
+                config.final_temperature, config.temperature_levels, level));
+    }
+    return chain.finish();
 }
 
 } // namespace detail
