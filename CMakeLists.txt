@@ -20,7 +20,7 @@ add_executable(multivalued_example
     examples/main.cpp examples/user_model.cpp examples/c_factors.c)
 target_link_libraries(multivalued_example PRIVATE annealer::annealer)
 set_target_properties(multivalued_example PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
-foreach(demo binary_hubo nonlinear minimal gset_g1 dimacs_coloring maxsat set_covering qaplib tsplib)
+foreach(demo binary_hubo nonlinear minimal gset_g1 dimacs_coloring maxsat set_covering qaplib tsplib jsplib_jobshop)
     add_executable(${demo}_example examples/${demo}.cpp)
     target_link_libraries(${demo}_example PRIVATE annealer::annealer)
 endforeach()
@@ -40,6 +40,13 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(jobshop_model_tests tests/jobshop_model_tests.cpp)
+    target_link_libraries(jobshop_model_tests PRIVATE annealer::annealer)
+    add_test(NAME jobshop_model_tests COMMAND jobshop_model_tests)
+    add_test(NAME jobshop_cli_tests COMMAND ${CMAKE_COMMAND}
+        "-DEXAMPLE=$<TARGET_FILE:jsplib_jobshop_example>"
+        "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/jobshop_cli_tests.cmake")
     add_executable(jsplib_jobshop_tests tests/jsplib_jobshop_tests.cpp)
     target_compile_features(jsplib_jobshop_tests PRIVATE cxx_std_20)
     add_test(NAME jsplib_jobshop_tests COMMAND jsplib_jobshop_tests)

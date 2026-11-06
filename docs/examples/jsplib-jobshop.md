@@ -1,8 +1,7 @@
 # JSPLib job-shop parsing and schedule validation
 
-This first job-shop component provides an instance parser, an independent
-schedule evaluator and a deterministic feasible initialization. It does not
-construct an energy model or run an optimizer.
+The job-shop example provides an instance parser, an independent schedule
+evaluator, deterministic feasible initialization and a factorized annealing model.
 
 A job is an ordered chain of nonpreemptive operations. Each operation requires
 one machine exclusively for its positive integer processing duration. Operations
@@ -104,5 +103,83 @@ const auto result = jobshop::evaluate(instance, starts);
 // result.feasible() is true; result.makespan is a valid serial upper bound.
 ```
 
-A subsequent change can build a factorized energy model and reuse this independent
-validator; this component has no annealer or solver dependency.
+The parser/validator header remains independent of the annealer. The model and
+runner below use it to verify solver results.
+
+
+## Factorized finite-horizon model
+
+`examples/jobshop_model.hpp` uses operation starts `s_i` in `[0,H-duration_i]`
+and a declared makespan `M` in `[0,H]`, with `H=sum(duration)`. The serial
+initial schedule fits this horizon, and some optimum fits it as well. The energy is
+
+`E = M + P*(precedence violations + machine conflicts + makespan-bound violations)`.
+
+Each violated adjacent precedence, overlapping same-machine pair, or completion
+beyond M counts once (not once per overlapping time unit). With `P=H+1`, every
+infeasible energy exceeds H, while the serial feasible initialization has energy
+H. Thus global minima are feasible and minimize makespan. All arithmetic and the
+bound `H+P*constraint_count <= 2^53` are checked for exact integer energies in
+double; this is more restrictive than the standalone parser's time range.
+
+For any binary constraint predicate V, the exact factorization is
+`V(s_i,y) = sum_a [s_i=a]*V(a,y)`. In each term `a` is an immutable captured
+constant, so `V(a,y)` is a pure unary function. Precedence uses
+`[a+duration_i > s_next]`; makespan uses `[a+duration_i > M]`; overlap uses
+`[a < s_j+duration_j && s_j < a+duration_i]`. No model factor takes two variable
+values, and no occupancy array or auxiliary Boolean variables are introduced.
+Although often called a HUBO formulation, these finite-domain terms have at most
+two factors, using the same public factorized higher-order API.
+
+For K operations, R adjacent precedence edges and C same-machine pairs, term
+count is bounded by `1+(K+R+C)*(H+1)`. Start domains are shortened by duration.
+Domain storage is O(KH), model/cache storage O((K+R+C)H), and full evaluation
+has the same term complexity. An incremental proposal touches all incident
+terms; the makespan variable touches all makespan-bound expansions.
+
+`estimate(instance)` computes exact term counts before model allocation. The
+planning allowance is 2048 bytes per term plus 32 bytes per domain entry, covering
+source and prepared copies, callback captures, metadata, caches and scratch.
+It is a conservative estimate, not a portable allocator guarantee or a process
+RSS limit. Preparation uses an additional lookup budget of 1 MiB. The CLI prints
+the estimate before construction and enforces `--memory-mib` (default 1024).
+Allocation can still fail on a constrained host.
+
+For the original files checked during development:
+
+| Instance | H | Variables | Terms | Planning bytes |
+| --- | ---: | ---: | ---: | ---: |
+| ft06 | 197 | 37 | 30,008 | 61,684,512 |
+| la01 | 2849 | 51 | 880,759 | 1,808,354,464 |
+
+la01 exceeds the default limit: constructing it requires an explicit larger
+budget and enough host memory. These sizes make long runs expensive. Start with
+short schedules rather than assuming this generic formulation is competitive
+with a specialized scheduling solver.
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel 1
+./build/jsplib_jobshop_example /tmp/ft06.txt --seed 42 --trials 1 \
+  --initial-temperature 30 --final-temperature 0.05 --levels 2 --sweeps 1
+./build/jsplib_jobshop_example /tmp/la01.txt --memory-mib 2048 --seed 42 --trials 1 \
+  --initial-temperature 30 --final-temperature 0.05 --levels 2 --sweeps 1
+ctest --test-dir build --output-on-failure -R 'jobshop'
+```
+
+The runner uses prepared evaluation and the default single-variable replacement
+neighborhood. Every trial starts from the same feasible serial schedule; seeds
+increment consecutively. Moving one start independently often breaks tightly
+coupled constraints, so progress may be poor. Swap mode is unsuitable for these
+heterogeneous time domains. No optimality claim is made. The
+[JSPLib reference listing](https://scheduleopt.github.io/benchmarks/jsplib)
+reports optimal makespans 55 for ft06 and 666 for la01; tests do not require
+annealing to reach them.
+
+Each trial prints seed, independently computed actual makespan, individual
+constraint counts, declared makespan, energy, feasibility and solve time. The
+model estimate includes variables and terms. Best and final assignments are
+checked independently; a feasible declared M may exceed the actual makespan,
+so both are reported. The total time includes estimation, construction,
+preparation, trials, verification and output, excluding parsing. Exit status zero
+means the run and verification completed. `--help` lists schedule/trial options.

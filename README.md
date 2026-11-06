@@ -29,4 +29,4 @@ The example evaluates an assignment (`Energy: -18.5`) and runs the solver. Link 
 - [OR-Library set covering scp41 benchmark](docs/examples/set-covering.md)
 - [QAPLIB nug12 and nug20 benchmark](docs/examples/qaplib.md)
 - [TSPLIB95 eil51 and berlin52 benchmark](docs/examples/tsplib.md)
-- [JSPLib job-shop parsing and schedule validation](docs/examples/jsplib-jobshop.md)
+- [JSPLib job-shop model and schedule validation](docs/examples/jsplib-jobshop.md)
