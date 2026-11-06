@@ -1,6 +1,7 @@
 #pragma once
 
 #include <annealer/model.hpp>
+#include <annealer/prepared.hpp>
 
 #include <optional>
 #include <random>
@@ -99,7 +100,7 @@ inline bool metropolis_accept(double delta_energy, double temperature, double un
     return std::log(uniform) < -(delta_energy / temperature);
 }
 
-inline SolverResult solve(const Model& model, const SolverConfig& config = {}) {
+inline SolverResult solve_reference(const Model& model, const SolverConfig& config = {}) {
     detail::validate_temperatures(config.initial_temperature, config.final_temperature);
     std::mt19937_64 random(config.seed);
     Assignment current;
@@ -163,6 +164,68 @@ inline SolverResult solve(const Model& model, const SolverConfig& config = {}) {
     result.final_assignment = std::move(current);
     result.final_energy = current_energy;
     return result;
+}
+
+inline SolverResult solve(const PreparedModel& prepared, const SolverConfig& config = {}) {
+    detail::validate_temperatures(config.initial_temperature, config.final_temperature);
+    const auto& model = prepared.source();
+    std::mt19937_64 random(config.seed);
+    Assignment initial;
+    if (config.initial_assignment) {
+        initial = *config.initial_assignment;
+    } else {
+        initial.reserve(model.domains().size());
+        for (const auto& domain : model.domains()) {
+            std::uniform_int_distribution<std::size_t> choose(0, domain.values().size() - 1);
+            initial.push_back(domain.values()[choose(random)]);
+        }
+    }
+    PreparedState state(prepared, initial);
+    const double initial_energy = full_energy(model, initial);
+    SolverResult result{initial, initial_energy, initial, initial_energy, 0, 0, config.seed};
+    std::vector<Variable> mutable_variables;
+    for (Variable i = 0; i < model.domains().size(); ++i) {
+        if (model.domains()[i].values().size() > 1) {
+            mutable_variables.push_back(i);
+        }
+    }
+    if (!mutable_variables.empty() && config.temperature_levels && config.sweeps_per_level) {
+        const auto moves = detail::checked_count(mutable_variables.size(), config.sweeps_per_level);
+        detail::checked_count(moves, config.temperature_levels);
+        for (std::size_t level = 0; level < config.temperature_levels; ++level) {
+            const double temperature = detail::temperature_unchecked(config.initial_temperature,
+                config.final_temperature, config.temperature_levels, level);
+            for (std::size_t move = 0; move < moves; ++move) {
+                const auto proposal = detail::draw_proposal(model, mutable_variables, state.indices(), random);
+                const double delta = state.propose(proposal.variable, proposal.index);
+                ++result.attempted_moves;
+                const double uniform = delta > 0 ? static_cast<double>(random() >> 11) * 0x1.0p-53 : 0.0;
+                if (metropolis_accept(delta, temperature, uniform)) {
+                    state.accept();
+                    ++result.accepted_moves;
+                    // Correct drift on a fixed accepted-move cadence.
+                    if (result.accepted_moves % 256 == 0) {
+                        state.rebase();
+                    }
+                    if (state.energy() < result.best_energy) {
+                        const double exact = full_energy(model, state.assignment());
+                        if (exact < result.best_energy) {
+                            std::copy(state.assignment().begin(), state.assignment().end(), result.best_assignment.begin());
+                            result.best_energy = exact;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    result.final_assignment = state.assignment();
+    result.final_energy = full_energy(model, result.final_assignment);
+    result.best_energy = full_energy(model, result.best_assignment);
+    return result;
+}
+
+inline SolverResult solve(const Model& model, const SolverConfig& config = {}) {
+    return solve(prepare(model), config);
 }
 
 } // namespace annealer

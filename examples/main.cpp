@@ -12,7 +12,8 @@ int main() {
         annealer::SolverConfig config;
         config.seed = 42;
         config.initial_assignment = annealer::Assignment{-2, 2, 3};
-        const auto result = annealer::solve(model, config);
+        const auto prepared = annealer::prepare(model);
+        const auto result = annealer::solve(prepared, config);
         std::cout << "Best energy: " << result.best_energy << " at";
         for (const auto value : result.best_assignment) {
             std::cout << ' ' << value;

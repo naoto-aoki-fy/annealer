@@ -31,7 +31,9 @@ so heterogeneous and nonconsecutive domains preserve symmetry. The implementatio
 samples an alternative index and passes the corresponding actual value to model
 callbacks. One sweep is exactly `m` attempts, rather than a visit to each variable.
 
-Every proposed assignment is evaluated with the reference `full_energy` function.
+The default solver uses [prepared incident-term updates](preparation.md).
+`solve_reference(model, config)` evaluates every proposed assignment with
+the reference `full_energy` function.
 For `delta = proposed_energy - current_energy`, downhill and equal moves always
 accept. Uphill moves accept with probability `exp(-delta / T)`. The testable
 `metropolis_accept(delta, T, u)` helper requires a finite delta, positive finite T,
@@ -77,7 +79,8 @@ There is no schedule allocation or iteration when no moves are requested.
 participates in best tracking. Strict improvement replaces the best; ties retain
 the first observed best. The current state can accept an uphill move without
 changing the saved best. Reported energies come from full evaluations of their
-corresponding assignments.
+corresponding assignments. See the [drift policy](preparation.md) for floating-point
+best-state comparisons in the optimized path.
 
 The same model, configuration, seed, and build/runtime environment reproduce a
 run. The library does not promise bitwise reproducibility across compilers,

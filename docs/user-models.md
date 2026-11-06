@@ -42,3 +42,5 @@ c++ -std=c++20 -O2 -Iinclude examples/main.cpp examples/user_model.cpp \
 Replace the example sources with your own factory and driver. Native compilation
 lets users write ordinary functions rather than source strings or expressions.
 See the [model contract](model.md) for purity, lifetime, and numerical rules.
+The [compilation and preparation guide](preparation.md) explains the example's
+static domain array, specialized native factor invokers, and optional IPO build.

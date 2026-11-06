@@ -87,5 +87,6 @@ rounding to zero) follow normal double arithmetic. Allocation failures propagate
 The library does not change the floating-point environment; use the compiler's
 normal nontrapping environment for exception-based overflow reporting.
 
-The [serial Metropolis solver](solver.md) uses this evaluator for every proposal,
-keeping its mutable state separate from the model.
+The [serial Metropolis solver](solver.md) uses [prepared incremental updates](preparation.md)
+by default, keeping its mutable state separate from the model. The reference
+evaluator and `solve_reference` remain available for validation.

@@ -20,3 +20,4 @@ The example evaluates an assignment (`Energy: -18.5`) and runs the solver. Link 
 - [Model API, numerical behavior, and assumptions](docs/model.md)
 - [Compiling a user model and C factor functions](docs/user-models.md)
 - [Solver configuration, schedule, and results](docs/solver.md)
+- [Native compilation, runtime preparation, and incremental updates](docs/preparation.md)
