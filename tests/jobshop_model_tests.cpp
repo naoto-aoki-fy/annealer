@@ -38,7 +38,7 @@ int main() {
         exhaustive("2 1 0 1 0 2", 3);
         exhaustive("1 2 0 1 1 1", 2);
         exhaustive("2 2 0 1 1 1 1 1 0 1", 2);
-        for (const auto [jobs, machines] : {std::pair{6,6}, std::pair{10,5}}) {
+        for (const auto& [jobs, machines] : {std::pair{6,6}, std::pair{10,5}}) {
             std::ostringstream text; text << jobs << ' ' << machines << '\n';
             for (int j = 0; j < jobs; ++j) for (int s = 0; s < machines; ++s) text << (s+j)%machines << " 1 ";
             const auto instance = parse(text.str());
