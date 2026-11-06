@@ -1,0 +1,88 @@
+# Serial Metropolis solver
+
+Include `<annealer/solver.hpp>` and call `annealer::solve(model, config)`:
+
+```cpp
+annealer::SolverConfig config;
+config.seed = 42;
+config.initial_assignment = annealer::Assignment{-2, 2, 3}; // optional
+config.initial_temperature = 10.0;
+config.final_temperature = 0.1;
+config.temperature_levels = 100;
+config.sweeps_per_level = 10;
+const auto result = annealer::solve(model, config);
+```
+
+These are also the defaults, except the default seed is zero and the initial
+assignment is absent. Without an assignment, each variable is independently
+initialized uniformly over its domain. Supplied assignments are validated by
+`full_energy`, including when the move budget is zero. Model construction,
+initialization, and execution run serially on the CPU. The solver takes a const
+model and keeps all mutable state locally.
+
+## Proposals and acceptance
+
+Each attempt selects uniformly among variables with at least two values, with
+replacement. It then selects uniformly among that variable's other values.
+Singletons are skipped. With `m` mutable variables and selected domain size `q`,
+the probability of either direction of a particular move is `1 / (m * (q - 1))`.
+The set of mutable variables and their cardinalities do not depend on the state,
+so heterogeneous and nonconsecutive domains preserve symmetry. The implementation
+samples an alternative index and passes the corresponding actual value to model
+callbacks. One sweep is exactly `m` attempts, rather than a visit to each variable.
+
+Every proposed assignment is evaluated with the reference `full_energy` function.
+For `delta = proposed_energy - current_energy`, downhill and equal moves always
+accept. Uphill moves accept with probability `exp(-delta / T)`. The testable
+`metropolis_accept(delta, T, u)` helper requires a finite delta, positive finite T,
+and `u` in `[0,1)`. It uses `log(u) < -delta/T`; zero accepts and threshold equality
+rejects. This avoids forming an exponential that can underflow. The solver uses
+the top 53 random bits of `std::mt19937_64` to obtain an exactly representable
+uniform double in `[0,1)`, and draws an acceptance variate only for uphill moves.
+Discrete indices use `std::uniform_int_distribution<std::size_t>`.
+
+The evaluator's numerical errors and callback exceptions propagate. A nonfinite
+energy difference raises `std::overflow_error`, even if both energies are finite;
+no partial result is returned. Overflow in the positive `delta/T` ratio means
+rejection for positive `u`. The callback purity and floating-point assumptions in
+the [model documentation](model.md) still apply.
+
+## Cooling and move budgets
+
+Both endpoint temperatures must be positive and finite, even for zero moves.
+The final temperature must not exceed the initial temperature. Violations throw
+`std::invalid_argument`. Equal endpoints give a constant schedule.
+
+For `L >= 2`, level `j` uses geometric cooling:
+
+`T(j) = exp((1 - j/(L-1)) * log(T_initial) + j/(L-1) * log(T_final))`.
+
+The endpoints are returned exactly; intermediate results are clamped to the
+endpoint range to contain rounding error. Log interpolation avoids forming an
+extreme endpoint ratio. `geometric_temperature(initial, final, L, j)` exposes
+this schedule and throws `std::out_of_range` if `j >= L`.
+
+- One level uses the initial temperature only. The final setting is still validated.
+- Zero levels or zero sweeps return the valid initialized assignment without moves.
+- No mutable variables also returns immediately without moves.
+- Otherwise attempts equal `L * sweeps_per_level * m`. A count exceeding
+  `std::size_t` raises `std::overflow_error` before attempting moves.
+
+There is no schedule allocation or iteration when no moves are requested.
+
+## Results and reproducibility
+
+`SolverResult` contains `best_assignment`, `best_energy`, `final_assignment`,
+`final_energy`, `attempted_moves`, `accepted_moves`, and `seed`. The initial state
+participates in best tracking. Strict improvement replaces the best; ties retain
+the first observed best. The current state can accept an uphill move without
+changing the saved best. Reported energies come from full evaluations of their
+corresponding assignments.
+
+The same model, configuration, seed, and build/runtime environment reproduce a
+run. The library does not promise bitwise reproducibility across compilers,
+standard libraries, or floating-point environments. Optimization is stochastic;
+finding a global optimum is not a correctness guarantee.
+
+The [runnable example](../examples/main.cpp) prints its best assignment, best and
+final energy, move counts, and seed after evaluating the original assignment.

@@ -1,8 +1,8 @@
 # annealer
 
 A C++20 library for finite-domain optimization with factorized higher-order
-interactions. This first stage provides model construction and a serial reference
-energy evaluator. The simulated annealing solver is not implemented yet.
+interactions, with a serial CPU Metropolis simulated annealing solver and a
+reference full-energy evaluator.
 
 Requires CMake 3.20+, a C++20 compiler, and a C compiler for the interoperability
 example. No third-party libraries are required.
@@ -14,8 +14,9 @@ ctest --test-dir build --output-on-failure --parallel 1
 ./build/multivalued_example
 ```
 
-The example prints `Energy: -18.5`. Link the CMake target
+The example evaluates an assignment (`Energy: -18.5`) and runs the solver. Link the CMake target
 `annealer::annealer` and include `<annealer/model.hpp>` in your own C++ code.
 
 - [Model API, numerical behavior, and assumptions](docs/model.md)
 - [Compiling a user model and C factor functions](docs/user-models.md)
+- [Solver configuration, schedule, and results](docs/solver.md)

@@ -87,6 +87,5 @@ rounding to zero) follow normal double arithmetic. Allocation failures propagate
 The library does not change the floating-point environment; use the compiler's
 normal nontrapping environment for exception-based overflow reporting.
 
-This stage contains no optimizer, schedule, moves, or acceptance logic. A later
-solver must use Metropolis acceptance and remain entirely serial on the CPU,
+The [serial Metropolis solver](solver.md) uses this evaluator for every proposal,
 keeping its mutable state separate from the model.
