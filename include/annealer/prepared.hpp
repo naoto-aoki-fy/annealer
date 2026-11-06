@@ -2,6 +2,7 @@
 
 #include <annealer/model.hpp>
 #include <span>
+#include <iterator>
 
 namespace annealer {
 
@@ -48,12 +49,15 @@ public:
 
     double contribution(std::size_t term_index, const std::vector<std::size_t>& indices,
                         Variable changed = std::numeric_limits<Variable>::max(),
-                        std::size_t replacement = 0) const {
+                        std::size_t replacement = 0,
+                        Variable second = std::numeric_limits<Variable>::max(),
+                        std::size_t second_replacement = 0) const {
         const auto& term = terms_.at(term_index);
         double product = 1.0;
         for (std::size_t i = term.begin; i < term.end; ++i) {
             const auto& factor = factors_[i];
-            const auto index = factor.variable == changed ? replacement : indices.at(factor.variable);
+            const auto index = factor.variable == changed ? replacement :
+                (factor.variable == second ? second_replacement : indices.at(factor.variable));
             // at() also validates manually supplied internal positions.
             const auto value = source_.domains()[factor.variable].values().at(index);
             const double unary = factor.table == no_table
@@ -166,11 +170,13 @@ public:
     double energy() const noexcept { return energy_; }
     // Logical term-cache and proposal-scratch payload, excluding vector capacity.
     std::size_t cache_bytes() const noexcept {
-        return (contributions_.size() + pending_.size()) * sizeof(double);
+        return (contributions_.size() + pending_.size()) * sizeof(double) +
+            swap_terms_.size() * sizeof(std::size_t);
     }
 
     double propose(Variable variable, std::size_t replacement) {
         pending_valid_ = false;
+        swap_pending_ = false;
         model_.source().domains().at(variable).values().at(replacement);
         double delta = 0;
         std::size_t position = 0;
@@ -186,9 +192,45 @@ public:
         return delta;
     }
 
+    // Both replacements are evaluated together; shared terms occur once.
+    double propose_swap(Variable first, Variable second) {
+        pending_valid_ = false;
+        const auto& domains = model_.source().domains();
+        const auto& first_values = domains.at(first).values();
+        const auto& second_values = domains.at(second).values();
+        if (first == second || first_values != second_values)
+            throw std::invalid_argument("swap requires distinct variables with identical domains");
+        swap_terms_.clear();
+        const auto a = model_.incident(first), b = model_.incident(second);
+        std::set_union(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(swap_terms_));
+        pending_.resize(std::max(pending_.size(), swap_terms_.size()));
+        double delta = 0;
+        for (std::size_t i = 0; i < swap_terms_.size(); ++i) {
+            const auto term = swap_terms_[i];
+            const double value = model_.contribution(term, indices_, first, indices_[second], second, indices_[first]);
+            pending_[i] = value;
+            delta = detail::finite_arithmetic(delta + detail::finite_arithmetic(value - contributions_[term]));
+        }
+        pending_energy_ = detail::finite_arithmetic(energy_ + delta);
+        variable_ = first;
+        second_ = second;
+        swap_pending_ = true;
+        pending_valid_ = true;
+        return delta;
+    }
+
     void accept() {
         if (!pending_valid_) {
             throw std::logic_error("no pending proposal");
+        }
+        if (swap_pending_) {
+            for (std::size_t i = 0; i < swap_terms_.size(); ++i)
+                contributions_[swap_terms_[i]] = pending_[i];
+            std::swap(assignment_[variable_], assignment_[second_]);
+            std::swap(indices_[variable_], indices_[second_]);
+            energy_ = pending_energy_;
+            pending_valid_ = false;
+            return;
         }
         std::size_t position = 0;
         for (const auto term : model_.incident(variable_)) {
@@ -219,6 +261,9 @@ private:
     double pending_energy_ = 0;
     Variable variable_ = 0;
     std::size_t replacement_ = 0;
+    Variable second_ = 0;
+    std::vector<std::size_t> swap_terms_;
+    bool swap_pending_ = false;
     bool pending_valid_ = false;
 };
 

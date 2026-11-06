@@ -17,6 +17,7 @@ struct SolverConfig {
     double final_temperature = 0.1;
     std::size_t temperature_levels = 100;
     std::size_t sweeps_per_level = 10;
+    bool swap_proposals = false;
 };
 
 struct SolverResult {
@@ -77,6 +78,19 @@ inline Proposal draw_proposal(const Model& model, const std::vector<Variable>& m
     return {variable, replacement_index(indices[variable], choose_replacement(random))};
 }
 
+inline void validate_swap_domains(const Model& model, bool swaps) {
+    if (!swaps || model.domains().empty()) return;
+    for (const auto& domain : model.domains())
+        if (domain.values() != model.domains().front().values())
+            throw std::invalid_argument("swap proposals require identical variable domains");
+}
+
+inline Proposal draw_swap(std::size_t count, std::mt19937_64& random) {
+    std::uniform_int_distribution<std::size_t> first(0, count - 1), rank(0, count - 2);
+    const auto variable = first(random);
+    return {variable, replacement_index(variable, rank(random))};
+}
+
 inline double temperature_unchecked(double initial, double final,
                                     std::size_t levels, std::size_t level) {
     if (level == 0) {
@@ -123,6 +137,7 @@ inline bool metropolis_accept(double delta_energy, double temperature, double un
 
 inline SolverResult solve_reference(const Model& model, const SolverConfig& config = {}) {
     detail::validate_temperatures(config.initial_temperature, config.final_temperature);
+    detail::validate_swap_domains(model, config.swap_proposals);
     std::mt19937_64 random(config.seed);
     Assignment current;
     if (config.initial_assignment) {
@@ -145,7 +160,7 @@ inline SolverResult solve_reference(const Model& model, const SolverConfig& conf
         const auto& values = model.domains()[variable].values();
         indices.push_back(static_cast<std::size_t>(std::find(values.begin(), values.end(), current[variable]) -
                                                    values.begin()));
-        if (values.size() > 1) {
+        if (config.swap_proposals ? current.size() >= 2 : values.size() > 1) {
             mutable_variables.push_back(variable);
         }
     }
@@ -158,10 +173,13 @@ inline SolverResult solve_reference(const Model& model, const SolverConfig& conf
         const double temperature = detail::temperature_unchecked(config.initial_temperature,
             config.final_temperature, config.temperature_levels, level);
         for (std::size_t move = 0; move < moves_per_level; ++move) {
-            const auto [variable, proposed_index] = detail::draw_proposal(model, mutable_variables, indices, random);
+            const auto [variable, proposed_index] = config.swap_proposals
+                ? detail::draw_swap(current.size(), random)
+                : detail::draw_proposal(model, mutable_variables, indices, random);
             const auto& values = model.domains()[variable].values();
             Assignment proposed = current;
-            proposed[variable] = values[proposed_index];
+            if (config.swap_proposals) std::swap(proposed[variable], proposed[proposed_index]);
+            else proposed[variable] = values[proposed_index];
             const double proposed_energy = full_energy(model, proposed);
             const double delta = proposed_energy - current_energy;
             if (!std::isfinite(delta)) {
@@ -173,7 +191,8 @@ inline SolverResult solve_reference(const Model& model, const SolverConfig& conf
             if (metropolis_accept(delta, temperature, uniform)) {
                 current = std::move(proposed);
                 current_energy = proposed_energy;
-                indices[variable] = proposed_index;
+                if (config.swap_proposals) std::swap(indices[variable], indices[proposed_index]);
+                else indices[variable] = proposed_index;
                 ++result.accepted_moves;
                 if (current_energy < result.best_energy) {
                     result.best_assignment = current;
@@ -216,6 +235,7 @@ inline SolverResult solve_loop(const PreparedModel& prepared, const SolverConfig
     };
     detail::validate_temperatures(config.initial_temperature, config.final_temperature);
     const auto& model = prepared.source();
+    detail::validate_swap_domains(model, config.swap_proposals);
     std::mt19937_64 random(config.seed);
     Assignment initial;
     if (config.initial_assignment) {
@@ -233,7 +253,7 @@ inline SolverResult solve_loop(const PreparedModel& prepared, const SolverConfig
     record(result);
     std::vector<Variable> mutable_variables;
     for (Variable i = 0; i < model.domains().size(); ++i) {
-        if (model.domains()[i].values().size() > 1) {
+        if (config.swap_proposals ? model.domains().size() >= 2 : model.domains()[i].values().size() > 1) {
             mutable_variables.push_back(i);
         }
     }
@@ -244,8 +264,10 @@ inline SolverResult solve_loop(const PreparedModel& prepared, const SolverConfig
             const double temperature = detail::temperature_unchecked(config.initial_temperature,
                 config.final_temperature, config.temperature_levels, level);
             for (std::size_t move = 0; move < moves; ++move) {
-                const auto proposal = timed(0, [&] { return detail::draw_proposal(model, mutable_variables, state.indices(), random); });
-                const double delta = timed(1, [&] { return state.propose(proposal.variable, proposal.index); });
+                const auto proposal = timed(0, [&] { return config.swap_proposals ? detail::draw_swap(model.domains().size(), random)
+                        : detail::draw_proposal(model, mutable_variables, state.indices(), random); });
+                const double delta = timed(1, [&] { return config.swap_proposals ? state.propose_swap(proposal.variable, proposal.index)
+                        : state.propose(proposal.variable, proposal.index); });
                 ++result.attempted_moves;
                 const bool accepted = timed(2, [&] {
                     const double uniform = delta > 0 ? static_cast<double>(random() >> 11) * 0x1.0p-53 : 0.0;

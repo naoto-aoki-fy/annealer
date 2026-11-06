@@ -106,3 +106,29 @@ is `abs(a-b) <= 1e-10 * (1 + max(abs(a), abs(b)))`. Integer-valued solver trajec
 are compared exactly. These tests cover their exercised numerical scales and do
 not establish a universal drift bound for ill-conditioned models. The reference
 path remains the correctness oracle.
+
+## Simultaneous swaps
+
+`PreparedState::propose_swap(first, second)` evaluates exchanging two distinct
+positions with identical domains (including value order), returning the complete
+energy difference. It leaves the assignment and cached energy unchanged until
+`accept()`; ignoring the proposal rejects it. A subsequent proposal replaces the
+pending proposal. Invalid indices throw `std::out_of_range`; equal positions or
+incompatible domains throw `std::invalid_argument`.
+
+The sorted incidence lists are merged into a union, and each affected term is
+recomputed once with both replacement values visible to all factors. This also
+handles higher-order terms and repeated occurrences of either variable. Lookup
+budgets, factor checks and finite arithmetic checks are unchanged. `accept()`
+commits both values, indices and affected term contributions together; `rebase()`
+invalidates pending proposals and refreshes all cached contributions.
+
+Swap proposals need scratch storage proportional to the union of the two
+incidence lists, allocated lazily and reused. Work includes merging those lists
+and evaluating every factor of each term in the union. Dense shared higher-order
+terms can therefore make swaps more expensive than single-variable proposals;
+they avoid an infeasible intermediate assignment and duplicate evaluation of
+shared terms. Reference swaps instead evaluate the entire proposed assignment.
+The public swap proposal also compares the two domain value arrays for safety,
+which costs up to their common cardinality per attempt. Solver setup validates
+all domains once as well.

@@ -120,3 +120,33 @@ cannot isolate each of these costs. Per-move clock calls perturb performance.
 Use history-only solves for time-budget comparisons and compare all three paths
 with the same seed to assess measurement cost. No timing threshold defines test
 success. See the [G1 guide](examples/gset-g1.md) for executable commands and CSVs.
+
+## Optional swap proposals
+
+Set `config.swap_proposals = true` to exchange the values at two distinct
+variable positions. The default is false and retains the existing replacement
+proposal and random draws. Swap mode is supported by `solve_reference`, prepared
+`solve`, and `solve_instrumented`.
+
+All variables must have identical domains, including the same stored value
+order. This is checked even when the move budget is zero. Models with fewer
+than two variables perform no swaps. Otherwise one sweep is exactly `n`
+attempts for `n` variables, including singleton domains and equal-valued swaps.
+Each attempt draws a uniform first position and a uniform distinct second
+position. Each ordered pair has probability `1/(n*(n-1))`; a particular
+unordered pair has probability `2/(n*(n-1))`, giving a symmetric proposal.
+Equal-valued swaps are allowed and count as accepted zero-energy moves.
+
+Supply a permutation through `initial_assignment` for permutation problems.
+Every accepted swap preserves its multiset, including repeated values if present.
+Default independent initialization does not generate a permutation. Swaps cannot
+change the initial multiset or enforce other constraints; they only explore
+reorderings. This mode provides a useful neighborhood for permutation models
+such as QAP and TSP without implementing those models.
+
+Acceptance uses the complete simultaneous swap energy difference. Prepared
+updates evaluate the union of incident terms, including terms involving both
+positions only once. Finite arithmetic checks, the accepted-move rebase cadence,
+and reference checks for best candidates apply as in replacement mode. Swap
+replay is deterministic for a fixed seed and configuration under the same
+standard-library implementation. It uses its own sequence of proposals.
