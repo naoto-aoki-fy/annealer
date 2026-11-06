@@ -1,0 +1,30 @@
+foreach(kind feasible infeasible)
+    if(kind STREQUAL "feasible")
+        set(clauses "3 0\n")
+        set(report "Soft cost: 3 Hard violations: 0 Total energy: 3.*Feasible: yes")
+    else()
+        set(clauses "h 0\n3 0\n")
+        set(report "Soft cost: 3 Hard violations: 1 Total energy: 7.*Feasible: no Status: infeasible assignment")
+    endif()
+    file(WRITE "${WORK}/maxsat-${kind}.wcnf" "${clauses}")
+    execute_process(COMMAND "${EXAMPLE}" "${WORK}/maxsat-${kind}.wcnf"
+        --seed 42 --trials 2 --levels 2 --sweeps 2
+        RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error)
+    if(NOT result EQUAL 0 OR NOT output MATCHES "${report}" OR NOT output MATCHES "Seed: 43")
+        message(FATAL_ERROR "Incorrect CLI result: ${output} ${error}")
+    endif()
+endforeach()
+foreach(args "--trials;0" "--seed;18446744073709551615;--trials;2"
+    "--initial-temperature;nan" "--final-temperature;31" "--levels;0"
+    "--sweeps;bad" "--unknown;1" "--seed")
+    execute_process(COMMAND "${EXAMPLE}" "${WORK}/maxsat-feasible.wcnf" ${args}
+        RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error)
+    if(result EQUAL 0)
+        message(FATAL_ERROR "Accepted invalid options: ${args}")
+    endif()
+endforeach()
+file(WRITE "${WORK}/maxsat-bad.wcnf" "p wcnf 1 1\n2 1\n")
+execute_process(COMMAND "${EXAMPLE}" "${WORK}/maxsat-bad.wcnf" RESULT_VARIABLE result)
+if(result EQUAL 0)
+    message(FATAL_ERROR "Accepted unterminated clause")
+endif()
