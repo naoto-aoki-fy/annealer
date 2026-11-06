@@ -150,3 +150,8 @@ positions only once. Finite arithmetic checks, the accepted-move rebase cadence,
 and reference checks for best candidates apply as in replacement mode. Swap
 replay is deterministic for a fixed seed and configuration under the same
 standard-library implementation. It uses its own sequence of proposals.
+
+## Distributed independent starts
+
+See [optional MPI multi-start](mpi.md) for collective execution of reproducible
+independent starts using this solver and a caller-provided communicator.
