@@ -71,7 +71,7 @@ ctest --test-dir build --output-on-failure --parallel 1
 ctest --test-dir build -R '^gset_tests$' --output-on-failure
 ```
 
-CMake links `gset_g1_example` to `annealer::annealer`. Use normal floating-point
+CMake links `gset_g1_example` to `annealer::annealer` (and `annealer::mpi` in MPI builds). Use normal floating-point
 optimization without fast-math.
 
 ## Running the Example
@@ -98,6 +98,30 @@ Zero levels or sweeps evaluate random initial states without proposing moves.
 One level uses the initial temperature. Seed range overflow is rejected.
 Preparation runs once with a 1 MiB unary-table payload budget, reused by all
 trials. Each trial initializes a fresh random assignment.
+
+## MPI execution
+
+Build with `-DANNEALER_ENABLE_MPI=ON`, then run, for example:
+
+```sh
+mpiexec -n 2 ./build/gset_g1_example graph.gset --mode mpi-multistart --trials 10
+mpiexec -n 2 ./build/gset_g1_example graph.gset --mode mpi-replica-exchange --trials 2 --exchange-interval 10 --exchange-seed 0
+```
+
+The default mode is `serial`. Multi-start distributes global trials with seeds
+`seed + trial`. Replica exchange runs collective trials with solver base seed
+`seed + trial * ranks` and exchange seed `exchange-seed + trial * ranks`;
+replicas add their rank to the solver base seed. It uses a cold-to-hot geometric
+temperature ladder and `levels * sweeps` total sweeps per replica per trial.
+Exchange options apply only to replica exchange.
+
+MPI modes independently verify local results and global best assignments.
+Rank 0 prints one best-cut summary across all runs and MPI wall timing including
+solving and verification. `--reference-cut` uses this globally selected cut.
+`--trace-csv`, `--profile`, and `--target-cut` currently require serial mode:
+the MPI APIs do not return the histories or profiling data these options need.
+Requests combining any of these options with MPI fail before opening output
+files or entering solver collectives. Distributed instrumentation is not provided.
 
 ## Understanding the Results
 

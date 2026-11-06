@@ -42,3 +42,11 @@ if(DEFINED BENCHMARK)
         endif()
     endforeach()
 endif()
+
+execute_process(COMMAND "${EXAMPLE}" "${WORK}/tiny.gset" --mode serial --trials 1
+    --levels 2 --sweeps 2 --profile --target-cut -1 --trace-csv "${WORK}/profile-trace.csv"
+    RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error)
+if(NOT result EQUAL 0 OR NOT output MATCHES "Profile seconds:" OR
+   NOT output MATCHES "TTS seconds:" OR NOT output MATCHES "Verified: yes")
+    message(FATAL_ERROR "Serial instrumentation failed: ${output} ${error}")
+endif()

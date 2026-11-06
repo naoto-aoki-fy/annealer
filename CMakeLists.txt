@@ -36,7 +36,7 @@ foreach(demo binary_hubo nonlinear minimal gset_g1 dimacs_coloring maxsat set_co
 endforeach()
 
 if(ANNEALER_ENABLE_MPI)
-    foreach(demo minimal binary_hubo nonlinear multivalued dimacs_coloring maxsat set_covering jsplib_jobshop qaplib tsplib)
+    foreach(demo gset_g1 minimal binary_hubo nonlinear multivalued dimacs_coloring maxsat set_covering jsplib_jobshop qaplib tsplib)
         target_link_libraries(${demo}_example PRIVATE annealer::mpi)
         target_compile_definitions(${demo}_example PRIVATE ANNEALER_ENABLE_MPI)
     endforeach()
@@ -79,6 +79,11 @@ if(BUILD_TESTING)
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/file_mpi_cli_tests.cmake")
             set_tests_properties(${demo}_mpi_cli PROPERTIES TIMEOUT 120 PROCESSORS 2)
         endforeach()
+        add_test(NAME gset_mpi_cli COMMAND ${CMAKE_COMMAND}
+            "-DEXAMPLE=$<TARGET_FILE:gset_g1_example>" "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"
+            "-DLAUNCH=${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};2;${MPIEXEC_PREFLAGS}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/gset_mpi_cli_tests.cmake")
+        set_tests_properties(gset_mpi_cli PROPERTIES TIMEOUT 120 PROCESSORS 2)
         add_executable(basic_execution_tests tests/basic_execution_tests.cpp)
         target_link_libraries(basic_execution_tests PRIVATE annealer::mpi)
         target_compile_definitions(basic_execution_tests PRIVATE ANNEALER_ENABLE_MPI)
