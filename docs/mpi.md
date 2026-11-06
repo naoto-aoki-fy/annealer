@@ -291,3 +291,39 @@ Only rank zero prints normal output. Argument handling, construction,
 preparation, serial solving and result processing use collective failure
 boundaries in MPI builds. MPI solvers retain their own collective error handling.
 MPI initialization and finalization are owned by the example when necessary.
+
+### File-based examples
+
+`dimacs_coloring_example`, `maxsat_example`, `set_covering_example`, and
+`jsplib_jobshop_example` accept the same `--mode serial|mpi-multistart|mpi-replica-exchange`,
+`--exchange-interval` (default 10), and `--exchange-seed` (default 0) options as
+the basic examples. Their existing file argument, defaults, preparation settings,
+and problem-specific validation remain in effect. For example:
+
+```sh
+mpiexec -n 2 build-mpi/maxsat_example instance.wcnf --mode mpi-multistart --trials 4
+mpiexec -n 2 build-mpi/dimacs_coloring_example graph.col --colors 3 \
+  --mode mpi-replica-exchange --trials 2 --exchange-interval 10
+```
+
+All ranks must receive identical arguments and construct the same instance and
+model. Each rank reads the input: the file must be accessible and identical on
+all ranks. Input, parsing, construction, preparation, and independent result
+verification errors are coordinated before further collectives.
+
+Multi-start trials count global starts, with seed `base + start_id`.
+Replica-exchange trials count collective runs, with rank seed
+`base + trial * ranks + rank`; the exchange seed advances by `trial * ranks`.
+The cold-to-hot geometric ladder spans the final and initial temperatures;
+`levels * sweeps` is each replica's total sweep budget.
+
+Rank 0 emits one report. MPI records are numbered `Global record` (one winner
+for multi-start, one winner per replica-exchange run). Every local solver result
+is independently checked, as is each global winner. Set covering's separate
+best-feasible summary includes local candidates from every rank. An infeasible
+candidate is a successful search execution, with infeasibility in its status.
+Solve timings include result verification and, in MPI modes, collective work.
+
+Job shop retains its initial schedule and model-memory check. `--memory-mib`
+applies separately to each process's model construction in MPI mode; it is not
+a total memory budget for the MPI job.
