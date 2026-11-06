@@ -1,0 +1,50 @@
+file(WRITE "${WORK}/mpi-coloring-triangle.col" "p edge 3 3\ne 1 2\ne 2 3\ne 3 1\n")
+file(WRITE "${WORK}/mpi-coloring-invalid.col" "p edge 3 1\ne 1 1\n")
+set(graph "${WORK}/mpi-coloring-triangle.col")
+foreach(colors 1 2 3)
+    foreach(trials 1 5)
+        set(options --colors ${colors} --seed 42 --trials ${trials} --levels 10 --sweeps 10)
+        execute_process(COMMAND "${SERIAL}" "${graph}" ${options}
+            RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 15)
+        if(NOT result STREQUAL "0")
+            message(FATAL_ERROR "Serial reference failed: ${error}")
+        endif()
+        string(REGEX MATCH "Best seed: [0-9]+ Best energy: [0-9]+ Conflicting edges: [0-9]+ Status: [^\n]+" reference "${output}")
+        if(reference STREQUAL "")
+            message(FATAL_ERROR "Missing serial summary: ${output}")
+        endif()
+        foreach(ranks 1 2 3 4)
+            execute_process(COMMAND "${MPIEXEC}" "${NUMPROC}" ${ranks} ${PREFLAGS}
+                "${EXAMPLE}" ${POSTFLAGS} "${graph}" ${options}
+                RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 15)
+            if(NOT result STREQUAL "0")
+                message(FATAL_ERROR "MPI run failed (${ranks} ranks): ${result} ${error}")
+            endif()
+            string(REGEX MATCHALL "Best seed: [^\n]+" summaries "${output}")
+            list(LENGTH summaries count)
+            if(NOT count EQUAL 1 OR NOT summaries STREQUAL reference)
+                message(FATAL_ERROR "MPI summary differs from serial: ${output}; expected ${reference}")
+            endif()
+        endforeach()
+    endforeach()
+endforeach()
+foreach(ranks 1 3)
+    foreach(args "--colors;0" "--colors;-1" "--trials;0"
+        "--seed;18446744073709551615;--trials;2" "--initial-temperature;nan"
+        "--final-temperature;31" "--levels;-1" "--sweeps;bad" "--unknown;1" "--colors")
+        execute_process(COMMAND "${MPIEXEC}" "${NUMPROC}" ${ranks} ${PREFLAGS}
+            "${EXAMPLE}" ${POSTFLAGS} "${graph}" ${args}
+            RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 15)
+        if(NOT result MATCHES "^[1-9][0-9]*$" OR NOT error MATCHES "Error:")
+            message(FATAL_ERROR "Invalid options did not fail cleanly: ${args}: ${result} ${error}")
+        endif()
+    endforeach()
+    foreach(input "${WORK}/mpi-coloring-invalid.col" "${WORK}/mpi-coloring-missing.col")
+        execute_process(COMMAND "${MPIEXEC}" "${NUMPROC}" ${ranks} ${PREFLAGS}
+            "${EXAMPLE}" ${POSTFLAGS} "${input}"
+            RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 15)
+        if(NOT result MATCHES "^[1-9][0-9]*$" OR NOT error MATCHES "Error:")
+            message(FATAL_ERROR "Invalid input did not fail cleanly: ${result} ${error}")
+        endif()
+    endforeach()
+endforeach()

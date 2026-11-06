@@ -3,6 +3,12 @@
 MPI support is optional and disabled by default. Serial headers and the
 `annealer::annealer` target do not depend on MPI.
 
+The [DIMACS graph coloring workflow](examples/dimacs-coloring.md#mpi-multi-start-execution)
+uses `dimacs_coloring_mpi_example` to distribute independent annealing trials
+with multi-start and independently verify the global winning coloring.
+Replica exchange instead runs temperature replicas that exchange configurations.
+The DIMACS example uses multi-start. MPI does not guarantee linear speedup.
+
 ## Build, run, and test
 
 From the repository root, with CMake 3.20+, C/C++20 compilers, and (for

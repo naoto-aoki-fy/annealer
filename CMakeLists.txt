@@ -12,6 +12,8 @@ if(ANNEALER_ENABLE_MPI)
     add_library(annealer_mpi INTERFACE)
     add_library(annealer::mpi ALIAS annealer_mpi)
     target_link_libraries(annealer_mpi INTERFACE annealer::annealer MPI::MPI_CXX)
+    add_executable(dimacs_coloring_mpi_example examples/dimacs_coloring_mpi.cpp)
+    target_link_libraries(dimacs_coloring_mpi_example PRIVATE annealer::mpi)
     add_executable(mpi_example examples/mpi.cpp)
     target_link_libraries(mpi_example PRIVATE annealer::mpi)
 endif()
@@ -59,6 +61,14 @@ if(BUILD_TESTING)
                 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:replica_exchange_tests> ${MPIEXEC_POSTFLAGS})
             set_tests_properties(replica_exchange_tests_${ranks} PROPERTIES TIMEOUT 60 PROCESSORS ${ranks})
         endforeach()
+        add_test(NAME coloring_mpi_cli_tests COMMAND ${CMAKE_COMMAND}
+            "-DEXAMPLE=$<TARGET_FILE:dimacs_coloring_mpi_example>"
+            "-DSERIAL=$<TARGET_FILE:dimacs_coloring_example>"
+            "-DMPIEXEC=${MPIEXEC_EXECUTABLE}" "-DNUMPROC=${MPIEXEC_NUMPROC_FLAG}"
+            "-DPREFLAGS=${MPIEXEC_PREFLAGS}" "-DPOSTFLAGS=${MPIEXEC_POSTFLAGS}"
+            "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/coloring_mpi_cli_tests.cmake")
+        set_tests_properties(coloring_mpi_cli_tests PROPERTIES TIMEOUT 180 PROCESSORS 4)
         add_executable(mpi_tests tests/mpi_tests.cpp)
         target_link_libraries(mpi_tests PRIVATE annealer::mpi)
         foreach(ranks 1 2 3 4)

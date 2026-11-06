@@ -111,6 +111,55 @@ single-variable attempts with replacement. Seed range overflow is rejected.
 Preparation occurs once with a 1 MiB unary-table payload budget. Each trial
 starts with a fresh random assignment. See [solver details](../solver.md).
 
+## MPI multi-start execution
+
+On Ubuntu, install OpenMPI and its development headers if needed.
+
+```sh
+sudo apt-get update
+sudo apt-get install openmpi-bin libopenmpi-dev
+cmake -S . -B build-mpi \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DANNEALER_ENABLE_MPI=ON
+cmake --build build-mpi --parallel 2
+mpiexec -n 4 ./build-mpi/dimacs_coloring_mpi_example \
+  /path/to/DSJC125.1-simple.col \
+  --colors 5 --seed 0 --trials 10 \
+  --initial-temperature 30 --final-temperature 0.05 \
+  --levels 200 --sweeps 100
+ctest --test-dir build-mpi --output-on-failure
+```
+
+Use the normalized text instance described above. All ranks must receive the
+same arguments and read the same file contents. Each rank parses the graph and
+prepares its own equivalent model. Input and preparation failures are agreed
+across ranks before entering solver collectives. MPI support is disabled by
+default, and the serial build requires no MPI installation.
+
+The [MPI executable](../../examples/dimacs_coloring_mpi.cpp) accepts the same
+options and defaults as the serial executable. `--trials` is the global count.
+It calls `annealer::solve_multistart(MPI_COMM_WORLD, prepared, trials, config)`.
+Start IDs are distributed cyclically, so rank r executes r, r + processes,
+and so on below the trial count. Ten trials on four ranks produce counts
+3, 3, 2, 2. Ranks above the number of trials remain idle but participate in
+collectives. Each start uses `seed + start_id`, independently of process count.
+
+The library selects the lowest best energy globally, breaking ties by the
+lowest start ID, and broadcasts the winning assignment. Each rank independently
+counts conflicting edges in that assignment and checks the returned energy.
+Each rank also verifies its local runs' best and final assignments. Only rank 0
+prints the normal summary, including the winning seed, global best energy and
+verified conflict count. Fixed seeds and trial counts reproduce the sequential
+best result within the library's existing same-build/runtime guarantees.
+
+The serial example executes these independent trajectories sequentially. MPI
+multi-start distributes whole trajectories among processes. A single annealing
+trajectory still runs sequentially. The library also supports replica exchange,
+in which temperature replicas exchange configurations. This DIMACS example uses
+multi-start. MPI does not guarantee linear speedup, because preparation,
+communication, load imbalance and process placement affect runtime.
+See [MPI APIs and reproducibility](../mpi.md).
+
 ## Input and output
 
 Text input allows blank lines and `c` comment lines, exactly one `p edge N M`
