@@ -1,5 +1,6 @@
 #pragma once
 #include "demo_models.hpp"
+#include "basic_execution.hpp"
 #include <iostream>
 
 namespace demos {
@@ -24,19 +25,18 @@ void enumerate(const annealer::Model& model, Visit visit) {
     }
 }
 
-inline int run(const annealer::Model& model) {
+template<class MakeModel>
+inline int run(int argc, char** argv, MakeModel make_model) {
     double minimum = std::numeric_limits<double>::infinity();
-    enumerate(model, [&](const auto& state) { minimum = std::min(minimum, annealer::full_energy(model, state)); });
-    std::cout << "Exact reference minimum: " << minimum << '\n';
-    const auto prepared = annealer::prepare(model);
-    // Optimization-quality demonstration, not a correctness assertion.
-    for (const std::uint64_t seed : {0, 1, 2, 3, 4}) {
-        annealer::SolverConfig config;
-        config.seed = seed;
-        const auto result = annealer::solve(prepared, config);
-        std::cout << "Seed " << seed << ": best " << result.best_energy
+    basic::Options options;
+    options.solver.seed = 0;
+    options.trials = 5;
+    return basic::run(argc, argv, options, make_model, [&](const auto& model) {
+        enumerate(model, [&](const auto& state) { minimum = std::min(minimum, annealer::full_energy(model, state)); });
+        std::cout << "Exact reference minimum: " << minimum << '\n';
+    }, [&](const auto& result) {
+        std::cout << "Seed " << result.seed << ": best " << result.best_energy
                   << ", gap " << result.best_energy - minimum << ", final " << result.final_energy << '\n';
-    }
-    return 0;
+    });
 }
 } // namespace demos

@@ -35,6 +35,13 @@ foreach(demo binary_hubo nonlinear minimal gset_g1 dimacs_coloring maxsat set_co
     target_link_libraries(${demo}_example PRIVATE annealer::annealer)
 endforeach()
 
+if(ANNEALER_ENABLE_MPI)
+    foreach(demo minimal binary_hubo nonlinear multivalued)
+        target_link_libraries(${demo}_example PRIVATE annealer::mpi)
+        target_compile_definitions(${demo}_example PRIVATE ANNEALER_ENABLE_MPI)
+    endforeach()
+endif()
+
 option(ANNEALER_BUILD_BENCHMARKS "Build sequential reproducible benchmarks" OFF)
 if(ANNEALER_BUILD_BENCHMARKS)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" bench_build_type)
@@ -50,6 +57,28 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    foreach(demo minimal binary_hubo nonlinear multivalued)
+        add_test(NAME basic_${demo}_cli COMMAND ${CMAKE_COMMAND}
+            "-DEXAMPLE=$<TARGET_FILE:${demo}_example>"
+            "-DMPI_ENABLED=${ANNEALER_ENABLE_MPI}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/basic_cli_tests.cmake")
+        if(ANNEALER_ENABLE_MPI)
+            add_test(NAME basic_${demo}_mpi_cli COMMAND ${CMAKE_COMMAND}
+                "-DEXAMPLE=$<TARGET_FILE:${demo}_example>" "-DMPI_ENABLED=ON"
+                "-DLAUNCH=${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};2;${MPIEXEC_PREFLAGS}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/basic_cli_tests.cmake")
+            set_tests_properties(basic_${demo}_mpi_cli PROPERTIES TIMEOUT 120 PROCESSORS 2)
+        endif()
+    endforeach()
+    if(ANNEALER_ENABLE_MPI)
+        add_executable(basic_execution_tests tests/basic_execution_tests.cpp)
+        target_link_libraries(basic_execution_tests PRIVATE annealer::mpi)
+        target_compile_definitions(basic_execution_tests PRIVATE ANNEALER_ENABLE_MPI)
+        add_test(NAME basic_execution_failures COMMAND ${MPIEXEC_EXECUTABLE}
+            ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+            $<TARGET_FILE:basic_execution_tests> ${MPIEXEC_POSTFLAGS})
+        set_tests_properties(basic_execution_failures PROPERTIES TIMEOUT 30 PROCESSORS 2)
+    endif()
     if(ANNEALER_ENABLE_MPI)
         add_executable(replica_exchange_tests tests/replica_exchange_tests.cpp)
         target_link_libraries(replica_exchange_tests PRIVATE annealer::mpi)

@@ -248,3 +248,46 @@ this small model; the integration tests separately exercise rejection behavior.
 The MPI-disabled Release build passed all 24 serial tests. Both MPI integration
 suites passed at 1, 2, 3, and 4 ranks (8/8 tests), including the existing
 subcommunicator, idle-rank, uneven-distribution, and controlled failure checks.
+
+## Basic example execution
+
+`minimal_example`, `binary_hubo_example`, `nonlinear_example`, and
+`multivalued_example` accept `--mode serial|mpi-multistart|mpi-replica-exchange`.
+The default is serial, including in MPI-enabled builds without `mpiexec`.
+MPI modes require `-DANNEALER_ENABLE_MPI=ON`. For example,
+
+```sh
+mpiexec -n 4 ./build-mpi/binary_hubo_example --mode mpi-multistart --trials 5 --seed 0
+mpiexec -n 4 ./build-mpi/minimal_example --mode mpi-replica-exchange --trials 2 \
+  --initial-temperature 10 --final-temperature 0.1 --levels 100 --sweeps 10 \
+  --exchange-interval 10 --exchange-seed 0
+```
+
+All four accept `--seed`, `--trials`, `--initial-temperature`,
+`--final-temperature`, `--levels`, `--sweeps`, and `--help`. No arguments retain
+the original model, initial assignment, solver defaults and output. Binary HUBO
+and nonlinear default to five trials with seeds 0 through 4. Minimal and
+multivalued default to one trial with seed 42. Temperature and sweep defaults
+remain those defined by each example and `SolverConfig`. Serial trials use
+consecutive seeds from the requested seed.
+
+In multi-start mode, trials are the total logical starts across all ranks,
+including when there are fewer starts than ranks. The MPI API receives the base
+seed unchanged and adds the global start ID. Output gives the global best
+assignment, winning start and seed, and global move counters.
+
+In replica-exchange mode, trials are independent collective runs with one replica
+per rank. The geometric ladder runs from the final (cold) temperature to the
+initial (hot) temperature. A single rank uses the cold endpoint. Levels times
+sweeps determines the total per-replica sweep budget, rather than a cooling
+schedule. `--exchange-interval` defaults to 10 and `--exchange-seed` defaults to
+0. These two options are accepted only in replica-exchange mode. Collective run
+`t` adds `t * communicator_size` to both base seeds, after which the MPI API adds
+the rank. Seed offsets and sweep-budget products are checked for overflow.
+Output reports the global best assignment and global exchange pair counters for
+each run, plus explicitly labeled rank-zero local move counters.
+
+Only rank zero prints normal output. Argument handling, construction,
+preparation, serial solving and result processing use collective failure
+boundaries in MPI builds. MPI solvers retain their own collective error handling.
+MPI initialization and finalization are owned by the example when necessary.

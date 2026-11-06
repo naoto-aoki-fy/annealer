@@ -1,2 +1,2 @@
 #include "demo_runner.hpp"
-int main() { return demos::run(demos::binary_hubo()); }
+int main(int argc, char** argv) { return demos::run(argc, argv, demos::binary_hubo); }
