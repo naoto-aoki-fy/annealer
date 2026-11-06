@@ -39,6 +39,11 @@ c++ -std=c++20 -O2 -Iinclude examples/main.cpp examples/user_model.cpp \
 ./build-direct/multivalued_example
 ```
 
+The repository driver includes `examples/basic_execution.hpp`; keep the sibling
+helper headers available when copying it. This direct command builds serial
+execution without MPI. Use the [MPI CMake build](mpi.md) for MPI discovery,
+linkage and the `ANNEALER_ENABLE_MPI` definition.
+
 Replace the example sources with your own factory and driver. Native compilation
 lets users write ordinary functions rather than source strings or expressions.
 See the [model contract](model.md) for purity, lifetime, and numerical rules.

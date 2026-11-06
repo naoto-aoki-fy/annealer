@@ -294,8 +294,8 @@ MPI initialization and finalization are owned by the example when necessary.
 
 ### File-based examples
 
-`dimacs_coloring_example`, `maxsat_example`, `set_covering_example`, and
-`jsplib_jobshop_example` accept the same `--mode serial|mpi-multistart|mpi-replica-exchange`,
+`gset_g1_example`, `dimacs_coloring_example`, `maxsat_example`,
+`set_covering_example`, `qaplib_example`, `tsplib_example`, and `jsplib_jobshop_example` accept the same `--mode serial|mpi-multistart|mpi-replica-exchange`,
 `--exchange-interval` (default 10), and `--exchange-seed` (default 0) options as
 the basic examples. Their existing file argument, defaults, preparation settings,
 and problem-specific validation remain in effect. For example:
@@ -327,3 +327,68 @@ Solve timings include result verification and, in MPI modes, collective work.
 Job shop retains its initial schedule and model-memory check. `--memory-mib`
 applies separately to each process's model construction in MPI mode; it is not
 a total memory budget for the MPI job.
+
+## Ordinary example command list
+
+Use the build commands above. These commands use MPI-enabled binaries, including
+serial execution without a launcher. For an MPI-disabled build use the same serial
+commands with `build-serial` instead of `build-mpi`.
+
+```sh
+./build-mpi/minimal_example --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/minimal_example --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/minimal_example --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+./build-mpi/binary_hubo_example --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/binary_hubo_example --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/binary_hubo_example --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+./build-mpi/nonlinear_example --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/nonlinear_example --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/nonlinear_example --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+./build-mpi/multivalued_example --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/multivalued_example --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/multivalued_example --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+```
+
+File-example commands: [G-set](examples/gset-g1.md#common-execution-commands),
+[coloring](examples/dimacs-coloring.md#common-execution-commands),
+[MaxSAT](examples/maxsat.md#common-execution-commands),
+[set covering](examples/set-covering.md#common-execution-commands),
+[QAP](examples/qaplib.md#common-execution-commands),
+[TSP](examples/tsplib.md#common-execution-commands), and
+[job shop](examples/jsplib-jobshop.md#common-execution-commands).
+
+Serial trials are sequential starts with seeds `base + trial`. Multi-start trials
+are global starts, distributed across ranks, with seeds `base + start_id`; ranks
+may have no starts. Both use a geometric cooling schedule with `levels`
+temperatures and `sweeps` sweeps at each level. Replica-exchange trials are
+collective runs, each with one replica per rank, `levels * sweeps` sweeps per
+replica, and a fixed cold-to-hot ladder from final to initial temperature. One
+rank uses only the cold endpoint. Changing rank count changes this ladder and
+the search. Modes do not imply equal computational budgets or identical results.
+Replica run `t` uses chain seed `base + t * ranks + rank` and exchange decision
+seed `exchange_base + t * ranks + rank`. All seed arithmetic and the sweep
+product are checked. Exchange interval must be positive and exchange options
+are valid only for replica exchange.
+
+QAP/TSP use swap proposals: MPI multi-start uses one common permutation generated
+from the base seed for all starts; replica run `t` uses a common permutation from
+`base + t * ranks`. Serial starts shuffle independently from their trial seed.
+Thus even multi-start need not reproduce serial QAP/TSP trajectories.
+
+Normal reports come only from rank zero. A report may contain multiple trial or
+collective-run records; these are not duplicate rank reports. Returned candidates
+are independently evaluated, including permutation/constraint checks. Search
+infeasibility is reported and is not necessarily an execution error. Basic
+examples report global winners and global multi-start move counts; replica move
+counts are explicitly local to rank zero. File-example solve timings include
+verification and MPI collective work, measured on rank zero, not a maximum across
+ranks. Total timings include model preparation and reporting as labeled, excluding
+input parsing. G-set labels its MPI solving/verification wall time separately.
+The dedicated `mpi_example` instead reports the maximum solver time across ranks,
+as detailed above. Timing fields are excluded from deterministic replay checks.
+
+The CLI audit uses tiny generated local fixtures, one and three ranks in addition
+to the existing two-rank checks, idle multi-start ranks, malformed/missing inputs,
+checked arithmetic, deterministic replay and root-only summaries. Existing MPI
+algorithm suites retain responsibility for communication and algorithm invariants;
+no stochastic optimum, speedup or improvement is required.

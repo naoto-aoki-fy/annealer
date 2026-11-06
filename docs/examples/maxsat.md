@@ -97,3 +97,19 @@ Record the archive year, instance filename, checksum, build configuration, and
 printed schedule/seeds when reporting results. The collection is large; no
 archive download is part of the build or tests. Tests use small self-contained
 instances and exhaustive enumeration rather than requiring stochastic optimality.
+
+## Common execution commands
+
+Build with MPI disabled or enabled as shown in [getting started](../getting-started.md).
+Replace `instance.wcnf` with a local input in the format described above; MPI inputs
+must be identical and accessible on every rank.
+
+```sh
+./build-mpi/maxsat_example instance.wcnf --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/maxsat_example instance.wcnf --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/maxsat_example instance.wcnf --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+```
+
+These short budgets demonstrate the interface, without a solution-quality
+promise. See [mode semantics and reporting](../mpi.md#ordinary-example-command-list)
+for global trials, seed offsets, temperatures, sweep budgets and timing scope.

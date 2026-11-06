@@ -94,3 +94,19 @@ sweeps and trials. Large rail instances may require substantial memory and time;
 start with scp41 and a short schedule. See [preparation](../preparation.md) for
 lookup behavior. Tests use exhaustive small synthetic instances with several
 lookup budgets and do not require annealing to find the scp41 optimum.
+
+## Common execution commands
+
+Build with MPI disabled or enabled as shown in [getting started](../getting-started.md).
+Replace `instance.txt` with a local input in the format described above; MPI inputs
+must be identical and accessible on every rank.
+
+```sh
+./build-mpi/set_covering_example instance.txt --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/set_covering_example instance.txt --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/set_covering_example instance.txt --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+```
+
+These short budgets demonstrate the interface, without a solution-quality
+promise. See [mode semantics and reporting](../mpi.md#ordinary-example-command-list)
+for global trials, seed offsets, temperatures, sweep budgets and timing scope.

@@ -1,5 +1,5 @@
 function(check expected pattern)
-    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${ARGN}
+    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} ${ARGN}
         RESULT_VARIABLE status OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 30)
     if(expected STREQUAL "ok")
         if(NOT status EQUAL 0)
@@ -31,7 +31,7 @@ endif()
 if(MPI_ENABLED AND LAUNCH)
     execute_process(COMMAND "${EXAMPLE}" --mode mpi-multistart --seed 17 --trials 3 --levels 2 --sweeps 1
         RESULT_VARIABLE single_status OUTPUT_VARIABLE single ERROR_VARIABLE single_error TIMEOUT 30)
-    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" --mode mpi-multistart --seed 17 --trials 3 --levels 2 --sweeps 1
+    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} --mode mpi-multistart --seed 17 --trials 3 --levels 2 --sweeps 1
         RESULT_VARIABLE multi_status OUTPUT_VARIABLE multi ERROR_VARIABLE multi_error TIMEOUT 30)
     if(NOT single_status EQUAL 0 OR NOT multi_status EQUAL 0 OR NOT single STREQUAL multi)
         message(FATAL_ERROR "Multi-start must be rank-count independent: ${single_error} ${multi_error}\n${single}\n${multi}")

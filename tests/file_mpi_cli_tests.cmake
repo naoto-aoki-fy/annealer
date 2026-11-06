@@ -24,7 +24,7 @@ foreach(mode mpi-multistart mpi-replica-exchange)
     if(mode STREQUAL "mpi-replica-exchange")
         set(exchange_args --exchange-interval 1 --exchange-seed 17)
     endif()
-    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" "${fixture}" --mode ${mode}
+    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} "${fixture}" --mode ${mode}
         --seed 42 --trials 3 --levels 2 --sweeps 2 ${exchange_args}
         RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 30)
     if(NOT result EQUAL 0 OR NOT output MATCHES "${expect}")
@@ -44,7 +44,7 @@ foreach(mode mpi-multistart mpi-replica-exchange)
         foreach(starts 1 3)
             set(previous "")
             foreach(repeat RANGE 1 2)
-                execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" "${fixture}" --mode ${mode}
+                execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} "${fixture}" --mode ${mode}
                     --seed 42 --trials ${starts} --levels 3 --sweeps 4 --reference-cost 0 ${exchange_args}
                     RESULT_VARIABLE replay_result OUTPUT_VARIABLE replay ERROR_VARIABLE replay_error TIMEOUT 30)
                 if(NOT replay_result EQUAL 0 OR NOT replay MATCHES "${expect}" OR
@@ -69,14 +69,14 @@ foreach(mode mpi-multistart mpi-replica-exchange)
         if(KIND STREQUAL "dimacs_coloring" AND args STREQUAL "--levels;0")
             continue()
         endif()
-        execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" "${fixture}" --mode ${mode}
+        execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} "${fixture}" --mode ${mode}
             --trials 2 --levels 2 --sweeps 1 ${args}
             RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 30)
         if(result EQUAL 0 OR result MATCHES "timeout")
             message(FATAL_ERROR "Invalid options did not fail cleanly: ${mode} ${args}: ${result}")
         endif()
     endforeach()
-    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" "${fixture}.missing" --mode ${mode}
+    execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} "${fixture}.missing" --mode ${mode}
         RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 30)
     if(result EQUAL 0 OR result MATCHES "timeout")
         message(FATAL_ERROR "Missing input did not fail cleanly: ${result}")
@@ -92,7 +92,7 @@ if(UNIX)
     string(REPLACE "$fixture" "${fixture}" script "${script}")
     file(WRITE "${wrapper}" "${script}")
     foreach(mode mpi-multistart mpi-replica-exchange)
-        execute_process(COMMAND ${LAUNCH} sh "${wrapper}" "${EXAMPLE}" "${mode}"
+        execute_process(COMMAND ${LAUNCH} sh ${POSTFLAGS} "${wrapper}" "${EXAMPLE}" "${mode}"
             RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 30)
         if(result EQUAL 0 OR result MATCHES "timeout")
             message(FATAL_ERROR "Rank-local input failure was not coordinated: ${result}")

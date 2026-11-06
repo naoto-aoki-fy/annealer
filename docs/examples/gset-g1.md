@@ -245,3 +245,22 @@ target time comes directly from timestamped histories; it is not estimated
 from the average TTS among successful iterations. Detailed per-move profiling
 is deliberately disabled for these comparisons. See the
 [recorded measurement report](../measurements/g1-results.md) and its CSV links.
+
+## Common execution commands
+
+Build with MPI disabled or enabled as shown in [getting started](../getting-started.md).
+Replace `graph.gset` with a local input in the format described above; MPI inputs
+must be identical and accessible on every rank.
+
+```sh
+./build-mpi/gset_g1_example graph.gset --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/gset_g1_example graph.gset --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/gset_g1_example graph.gset --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+```
+
+These short budgets demonstrate the interface, without a solution-quality
+promise. See [mode semantics and reporting](../mpi.md#ordinary-example-command-list)
+for global trials, seed offsets, temperatures, sweep budgets and timing scope.
+
+`--trace-csv`, `--profile`, and `--target-cut` require serial mode; MPI requests
+are rejected before trace files are created or truncated.

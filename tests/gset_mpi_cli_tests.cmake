@@ -2,7 +2,7 @@ set(fixture "${WORK}/gset-mpi.txt")
 file(WRITE "${fixture}" "2 1\n1 2 3\n")
 foreach(mode mpi-multistart mpi-replica-exchange)
     foreach(trials 1 3)
-        execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" "${fixture}" --mode ${mode}
+        execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} "${fixture}" --mode ${mode}
             --seed 42 --trials ${trials} --levels 3 --sweeps 4 --reference-cut 3
             RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 30)
         if(NOT result EQUAL 0 OR NOT output MATCHES "Best cut: 3 Best energy: -3 Verified: yes Reference gap: 0")
@@ -33,13 +33,13 @@ foreach(mode mpi-multistart mpi-replica-exchange)
                 if(option STREQUAL "--profile")
                     set(value "")
                 endif()
-                execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" "${fixture}" --mode ${mode} ${option} ${value}
+                execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} "${fixture}" --mode ${mode} ${option} ${value}
                     RESULT_VARIABLE result OUTPUT_QUIET ERROR_VARIABLE error TIMEOUT 30)
                 if(result EQUAL 0 OR NOT error MATCHES "${option} currently requires serial mode")
                     message(FATAL_ERROR "Missing diagnostic for ${option}: ${error}")
                 endif()
             endif()
-            execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" "${fixture}" --mode ${mode} ${args}
+            execute_process(COMMAND ${LAUNCH} "${EXAMPLE}" ${POSTFLAGS} "${fixture}" --mode ${mode} ${args}
                 RESULT_VARIABLE result OUTPUT_QUIET ERROR_VARIABLE error TIMEOUT 30)
             if(result EQUAL 0 OR NOT error MATCHES "currently requires serial mode")
                 message(FATAL_ERROR "Invalid diagnostics accepted: ${error}")

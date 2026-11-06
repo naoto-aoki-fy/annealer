@@ -7,10 +7,11 @@ reference full-energy evaluator.
 [Getting started and examples](docs/getting-started.md) · [Serial benchmarks](docs/benchmarks.md)
 
 Requires CMake 3.20+, a C++20 compiler, and a C compiler for the interoperability
-example. No third-party libraries are required.
+example. No third-party libraries are required for the default serial build. Optional
+[MPI execution](docs/mpi.md) supports all eleven ordinary examples.
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DANNEALER_ENABLE_MPI=OFF
 cmake --build build --parallel 1
 ctest --test-dir build --output-on-failure --parallel 1
 ./build/multivalued_example

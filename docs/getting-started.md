@@ -1,10 +1,10 @@
 # Getting started
 
 The library requires C++20, CMake 3.20+, and a C compiler for the C interoperability
-example. It has no third-party runtime dependencies.
+example. The default serial build has no third-party runtime dependencies.
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DANNEALER_ENABLE_MPI=OFF
 cmake --build build --parallel 1
 ctest --test-dir build --output-on-failure --parallel 1
 ./build/minimal_example
@@ -23,7 +23,8 @@ These are optimization-quality demonstrations, not guarantees of optimality.
 
 ## Complete minimal example
 
-Save this as `minimal.cpp` (also available as [examples/minimal.cpp](../examples/minimal.cpp)):
+Save this standalone snippet as `minimal.cpp`. The repository
+[CLI example](../examples/minimal.cpp) additionally uses shared execution helpers:
 
 ```cpp
 #include <annealer/solver.hpp>
@@ -83,8 +84,8 @@ C/C++ source files and normal `extern "C"` interoperability.
 Set `PreparationConfig::lookup_bytes` to zero to disable unary tables, or provide
 a payload budget. Native compilation and optional IPO optimize user functions;
 preparation constructs tables and indices at runtime. Arbitrary callbacks need
-not be constexpr. Execution is serial and CPU-only; applications must call model
-preparation and solving serially as well.
+not be constexpr. Local execution is CPU-only. Optional MPI distributes independent starts or
+exchanges replicas; see [MPI execution](mpi.md).
 
 Use normal floating-point optimization, without fast-math. Finite inputs can still
 overflow during products, sums, or differences; the library throws as documented.
@@ -92,3 +93,20 @@ Underflow and rounding follow double arithmetic. Incremental rounding can affect
 near-tie decisions; reference checkpoints correct drift and returned energies are
 recomputed. Runs reproduce within the same model, configuration, seed, and
 build/runtime environment; cross-toolchain bitwise reproducibility is not promised.
+
+## Selectable execution
+
+For an MPI build (requires an MPI installation):
+
+```sh
+cmake -S . -B build-mpi -DCMAKE_BUILD_TYPE=Release -DANNEALER_ENABLE_MPI=ON
+cmake --build build-mpi --parallel 2
+ctest --test-dir build-mpi --output-on-failure
+```
+
+An MPI-enabled executable still defaults to serial without a launcher. The
+[complete command list and mode semantics](mpi.md#ordinary-example-command-list)
+cover all eleven examples. MPI-disabled binaries reject requested MPI modes.
+The saved snippet above needs only `-Iinclude`; compiling repository CLI sources
+also requires their sibling helper headers. Keep `examples/` intact; use CMake
+for MPI linkage and the `ANNEALER_ENABLE_MPI` definition.

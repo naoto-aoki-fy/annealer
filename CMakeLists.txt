@@ -66,22 +66,54 @@ if(BUILD_TESTING)
             add_test(NAME basic_${demo}_mpi_cli COMMAND ${CMAKE_COMMAND}
                 "-DEXAMPLE=$<TARGET_FILE:${demo}_example>" "-DMPI_ENABLED=ON"
                 "-DLAUNCH=${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};2;${MPIEXEC_PREFLAGS}"
+                "-DPOSTFLAGS=${MPIEXEC_POSTFLAGS}"
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/basic_cli_tests.cmake")
             set_tests_properties(basic_${demo}_mpi_cli PROPERTIES TIMEOUT 120 PROCESSORS 2)
         endif()
     endforeach()
+    # Exercise the selectable interface independently of the MPI algorithm suites.
+    foreach(demo minimal binary_hubo nonlinear multivalued gset_g1 dimacs_coloring maxsat set_covering qaplib tsplib jsplib_jobshop)
+        add_test(NAME ${demo}_mode_serial COMMAND ${CMAKE_COMMAND}
+            "-DEXAMPLE=$<TARGET_FILE:${demo}_example>" "-DKIND=${demo}"
+            "-DWORK=${CMAKE_CURRENT_BINARY_DIR}" "-DMPI_ENABLED=${ANNEALER_ENABLE_MPI}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/mode_audit_tests.cmake")
+        set_tests_properties(${demo}_mode_serial PROPERTIES TIMEOUT 120)
+        if(ANNEALER_ENABLE_MPI)
+            foreach(ranks 1 3)
+                add_test(NAME ${demo}_mode_mpi_${ranks} COMMAND ${CMAKE_COMMAND}
+                    "-DEXAMPLE=$<TARGET_FILE:${demo}_example>" "-DKIND=${demo}"
+                    "-DWORK=${CMAKE_CURRENT_BINARY_DIR}" "-DMPI_ENABLED=ON" "-DRANKS=${ranks}"
+                    "-DLAUNCH=${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};${ranks};${MPIEXEC_PREFLAGS}"
+                    "-DPOSTFLAGS=${MPIEXEC_POSTFLAGS}"
+                    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/mode_audit_tests.cmake")
+                set_tests_properties(${demo}_mode_mpi_${ranks} PROPERTIES TIMEOUT 120 PROCESSORS ${ranks})
+            endforeach()
+        endif()
+    endforeach()
+    if(ANNEALER_ENABLE_MPI)
+        foreach(ranks 1 3)
+            add_test(NAME mpi_example_${ranks} COMMAND ${CMAKE_COMMAND}
+                "-DEXAMPLE=$<TARGET_FILE:mpi_example>" "-DKIND=dedicated" "-DRANKS=${ranks}"
+                "-DLAUNCH=${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};${ranks};${MPIEXEC_PREFLAGS}"
+                "-DPOSTFLAGS=${MPIEXEC_POSTFLAGS}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/mode_audit_tests.cmake")
+            set_tests_properties(mpi_example_${ranks} PROPERTIES TIMEOUT 60 PROCESSORS ${ranks})
+        endforeach()
+    endif()
     if(ANNEALER_ENABLE_MPI)
         foreach(demo dimacs_coloring maxsat set_covering jsplib_jobshop qaplib tsplib)
             add_test(NAME ${demo}_mpi_cli COMMAND ${CMAKE_COMMAND}
                 "-DEXAMPLE=$<TARGET_FILE:${demo}_example>" "-DKIND=${demo}"
                 "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"
                 "-DLAUNCH=${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};2;${MPIEXEC_PREFLAGS}"
+                "-DPOSTFLAGS=${MPIEXEC_POSTFLAGS}"
                 -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/file_mpi_cli_tests.cmake")
             set_tests_properties(${demo}_mpi_cli PROPERTIES TIMEOUT 120 PROCESSORS 2)
         endforeach()
         add_test(NAME gset_mpi_cli COMMAND ${CMAKE_COMMAND}
             "-DEXAMPLE=$<TARGET_FILE:gset_g1_example>" "-DWORK=${CMAKE_CURRENT_BINARY_DIR}"
             "-DLAUNCH=${MPIEXEC_EXECUTABLE};${MPIEXEC_NUMPROC_FLAG};2;${MPIEXEC_PREFLAGS}"
+            "-DPOSTFLAGS=${MPIEXEC_POSTFLAGS}"
             -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/gset_mpi_cli_tests.cmake")
         set_tests_properties(gset_mpi_cli PROPERTIES TIMEOUT 120 PROCESSORS 2)
         add_executable(basic_execution_tests tests/basic_execution_tests.cpp)

@@ -196,3 +196,22 @@ checked independently; a feasible declared M may exceed the actual makespan,
 so both are reported. The total time includes estimation, construction,
 preparation, trials, verification and output, excluding parsing. Exit status zero
 means the run and verification completed. `--help` lists schedule/trial options.
+
+## Common execution commands
+
+Build with MPI disabled or enabled as shown in [getting started](../getting-started.md).
+Replace `instance.txt` with a local input in the format described above; MPI inputs
+must be identical and accessible on every rank.
+
+```sh
+./build-mpi/jsplib_jobshop_example instance.txt --mode serial --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/jsplib_jobshop_example instance.txt --mode mpi-multistart --seed 42 --trials 2 --levels 2 --sweeps 1
+mpiexec -n 3 ./build-mpi/jsplib_jobshop_example instance.txt --mode mpi-replica-exchange --seed 42 --trials 2 --levels 2 --sweeps 1 --exchange-interval 1 --exchange-seed 17
+```
+
+These short budgets demonstrate the interface, without a solution-quality
+promise. See [mode semantics and reporting](../mpi.md#ordinary-example-command-list)
+for global trials, seed offsets, temperatures, sweep budgets and timing scope.
+
+`--memory-mib` limits model construction separately on every process; it is
+not an aggregate job memory limit and does not cap all solver/runtime memory.
