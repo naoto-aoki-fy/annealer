@@ -164,6 +164,10 @@ public:
     const Assignment& assignment() const noexcept { return assignment_; }
     const std::vector<std::size_t>& indices() const noexcept { return indices_; }
     double energy() const noexcept { return energy_; }
+    // Logical term-cache and proposal-scratch payload, excluding vector capacity.
+    std::size_t cache_bytes() const noexcept {
+        return (contributions_.size() + pending_.size()) * sizeof(double);
+    }
 
     double propose(Variable variable, std::size_t replacement) {
         pending_valid_ = false;

@@ -4,6 +4,8 @@ A C++20 library for finite-domain optimization with factorized higher-order
 interactions, with a serial CPU Metropolis simulated annealing solver and a
 reference full-energy evaluator.
 
+[Getting started and examples](docs/getting-started.md) · [Serial benchmarks](docs/benchmarks.md)
+
 Requires CMake 3.20+, a C++20 compiler, and a C compiler for the interoperability
 example. No third-party libraries are required.
 
